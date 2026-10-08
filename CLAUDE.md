@@ -245,3 +245,4 @@ Next:
 - Timeline is an SVG Gantt (Bryntum fallback). Bryntum's npm package is private/licensed — swap in if the license is confirmed.
 - Judge mode: `POST /api/auth/demo` → shared demo user + seeded Larkspur workspace (`DEMO_MODE=off` disables). Demo invoices go to `PAYER_EMAIL`.
 - Tests: `packages/services/test/flow.test.ts` drives the whole flow against a real Postgres (`TEST_DATABASE_URL`, schema dropped each run).
+- APIMatic Context Plugin (PayPal Server SDK, TS skills) vendored in `.claude/skills/` — loads in every session. Covers Orders/Payments/Vault/Subscriptions/Transaction Search via `@paypal/paypal-server-sdk`; **not Invoicing**. Load `typescript-getting-started` first when touching the Server SDK.

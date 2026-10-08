@@ -116,7 +116,7 @@ For the hackathon, one sandbox US Business account is the demo freelancer and a 
 | **Render** | Blueprint (`render.yaml`): web service, background worker, cron job and Postgres; migrations run as a pre-deploy command. |
 | **Timeline** | Milestone Gantt (dependencies, due dates, acceptance windows, invoice due markers, progress from confirmed evidence) rendered as SVG — the planned fallback while the Bryntum Gantt license is unconfirmed. |
 | **GitHub** | REST polling of merged PRs for any public repo, PR webhooks, OAuth login. |
-| **APIMatic** | _TODO: document Context Plugins usage while building the PayPal integration._ |
+| **APIMatic Context Plugin** | The PayPal Server SDK Context Plugin's TypeScript skills are checked in under [`.claude/skills/`](.claude/skills/README.md), so every coding-agent session on this repo has grounded knowledge of `@paypal/paypal-server-sdk` (Orders, Payments, Vault, Subscriptions, Transaction Search). The plugin doesn't cover Invoicing v2, which stays on our REST client. |
 
 ## Development
 
