@@ -1,0 +1,64 @@
+# Render Blueprint — lets judges one-click deploy. Plan names: confirm in Render dashboard.
+# Free tier won't work: free Postgres expires after ~30 days, workers/crons aren't free,
+# free web services sleep. Use Starter plans on hackathon credits.
+envVarGroups:
+  - name: proofbill-shared
+    envVars:
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+
+services:
+  - type: web
+    name: proofbill-web
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter web build
+    startCommand: pnpm --filter web start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: proofbill-db, property: connectionString }
+      - fromGroup: proofbill-shared
+
+  - type: worker
+    name: proofbill-worker
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter worker build
+    startCommand: pnpm --filter worker start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: proofbill-db, property: connectionString }
+      - fromGroup: proofbill-shared
+
+  - type: cron
+    name: proofbill-reminders
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "0 */6 * * *"   # every 6h: overdue reminders + late fees
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter worker build
+    startCommand: pnpm --filter worker reminders
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: proofbill-db, property: connectionString }
+      - fromGroup: proofbill-shared
+
+databases:
+  - name: proofbill-db
+    plan: basic-256mb
+    region: oregon
