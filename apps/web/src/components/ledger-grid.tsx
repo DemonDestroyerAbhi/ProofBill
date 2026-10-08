@@ -59,6 +59,16 @@ export function LedgerGrid({ rows, licenseKey }: { rows: LedgerRow[]; licenseKey
       { field: "amount", width: 135, type: "numericColumn", aggFunc: "sum", valueFormatter: (p) => money(p.value, p.data?.currency) },
       { field: "paid", width: 125, type: "numericColumn", valueFormatter: (p) => money(p.value, p.data?.currency) },
       { field: "balance", width: 135, type: "numericColumn", valueFormatter: (p) => money(p.value, p.data?.currency), cellStyle: (p) => (p.value > 0 ? { fontWeight: 600 } : null) },
+      { field: "fees", headerName: "PayPal fees", width: 135, type: "numericColumn", valueFormatter: (p) => money(p.value, p.data?.currency) },
+      {
+        field: "net",
+        headerName: "Net received",
+        width: 140,
+        type: "numericColumn",
+        valueFormatter: (p) => money(p.value, p.data?.currency),
+        tooltipValueGetter: (p) => (p.data?.reconcile ? `Transaction Search: ${p.data.reconcile}` : "Not reconciled yet"),
+        cellStyle: (p) => (p.data?.reconcile === "mismatch" ? { color: "#b42318", fontWeight: 700 } : null),
+      },
       { field: "status", width: 150, cellRenderer: StatusCell, enableRowGroup: true },
       { field: "dueDate", headerName: "Due", width: 120 },
       {

@@ -21,6 +21,10 @@ export interface LedgerRow {
   invoiceTotal: number;
   paid: number;
   balance: number;
+  /** PayPal fees and net received, from Transaction Search reconciliation (null until reconciled). */
+  fees: number | null;
+  net: number | null;
+  reconcile: string | null;
   currency: string;
   status: string;
   sentAt: string | null;
@@ -68,6 +72,9 @@ export async function ledgerRows(userId: string, now = new Date()): Promise<Ledg
       invoiceTotal: inv.amountCents / 100,
       paid: inv.paidCents / 100,
       balance: (inv.amountCents - inv.paidCents) / 100,
+      fees: inv.feeCents != null ? inv.feeCents / 100 : null,
+      net: inv.netCents != null ? inv.netCents / 100 : null,
+      reconcile: inv.reconcileStatus,
       currency: inv.currency,
       status: inv.status,
       sentAt: inv.sentAt?.toISOString() ?? null,
@@ -85,7 +92,7 @@ export function assistantTools(userId: string): AssistantTool[] {
   return [
     {
       name: "list_receivables",
-      description: "List invoices with client, milestone, amount, paid, balance, status, due date and days overdue. Optionally filter by client/contract name substring or status.",
+      description: "List invoices with client, milestone, amount, paid, balance, PayPal fees, net received (from Transaction Search reconciliation), status, due date and days overdue. Optionally filter by client/contract name substring or status.",
       parameters: {
         type: "object",
         properties: { query: { type: "string", description: "Client or contract name substring" }, status: { type: "string" } },
@@ -98,8 +105,8 @@ export function assistantTools(userId: string): AssistantTool[] {
         return [...byInv.values()]
           .filter((r) => !q || r.client.toLowerCase().includes(q) || r.contractTitle.toLowerCase().includes(q))
           .filter((r) => !input.status || r.status === input.status)
-          .map(({ invoiceNumber, client, contractTitle, milestone, invoiceTotal, paid, balance, currency, status, dueDate, daysOverdue, reminders }) => ({
-            invoiceNumber, client, contractTitle, milestone, total: invoiceTotal, paid, balance, currency, status, dueDate, daysOverdue, reminders,
+          .map(({ invoiceNumber, client, contractTitle, milestone, invoiceTotal, paid, balance, fees, net, reconcile, currency, status, dueDate, daysOverdue, reminders }) => ({
+            invoiceNumber, client, contractTitle, milestone, total: invoiceTotal, paid, balance, paypalFees: fees, netReceived: net, reconciliation: reconcile, currency, status, dueDate, daysOverdue, reminders,
           }));
       },
     },

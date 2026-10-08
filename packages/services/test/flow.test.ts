@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addDays, parseDate } from "@proofbill/core";
-import { auditEvents, closeDb, eq, evidence, getDb, invoices, milestones, webhookEvents, contracts, and } from "@proofbill/db";
+import { auditEvents, closeDb, eq, evidence, getDb, invoicePayments, invoices, milestones, paypalMockInvoices, webhookEvents, contracts, and } from "@proofbill/db";
 import {
   approveAndSend,
   autoAcceptDue,
@@ -25,6 +25,7 @@ import {
   createDraftFromText,
   confirmContract,
   extractedToConfirmed,
+  reconcileInvoice,
 } from "../src";
 
 let userId: string;
@@ -218,11 +219,37 @@ describe("collections cron", () => {
   });
 });
 
+describe("payment reconciliation (Transaction Search)", () => {
+  it("matched both payments on M1 with PayPal fees and net received", async () => {
+    const [inv] = await getDb().select().from(invoices).where(and(eq(invoices.milestoneId, (await m(1)).id), eq(invoices.kind, "milestone")));
+    expect(inv).toMatchObject({ reconcileStatus: "matched", paidCents: 60000 });
+    const pays = await getDb().select().from(invoicePayments).where(eq(invoicePayments.invoiceId, inv!.id));
+    expect(pays.map((p) => p.grossCents).sort()).toEqual([15000, 45000]);
+    // simulated US invoicing rate: 3.49% + $0.49 per transaction
+    expect(pays.reduce((s, p) => s + p.feeCents, 0)).toBe(Math.round(15000 * 0.0349) + 49 + Math.round(45000 * 0.0349) + 49);
+    expect(inv!.netCents).toBe(60000 - inv!.feeCents!);
+  });
+
+  it("is idempotent and flags a mismatch when transactions don't cover what Invoicing reports", async () => {
+    const [inv] = await getDb().select().from(invoices).where(and(eq(invoices.milestoneId, (await m(1)).id), eq(invoices.kind, "milestone")));
+    const again = await reconcileInvoice(inv!.id);
+    expect(again).toMatchObject({ status: "matched", newTransactions: 0 });
+    // Lose one transaction on the PayPal side, then check well past the 3h search lag.
+    const [mock] = await getDb().select().from(paypalMockInvoices).where(eq(paypalMockInvoices.id, inv!.paypalInvoiceId!));
+    await getDb().update(paypalMockInvoices).set({ payments: (mock!.payments as unknown[]).slice(0, 1) }).where(eq(paypalMockInvoices.id, mock!.id));
+    await getDb().delete(invoicePayments).where(eq(invoicePayments.invoiceId, inv!.id));
+    const r = await reconcileInvoice(inv!.id, new Date(Date.now() + 4 * 3_600_000));
+    expect(r.status).toBe("mismatch");
+    const audits = await getDb().select().from(auditEvents).where(and(eq(auditEvents.entityId, inv!.id), eq(auditEvents.action, "reconcile_mismatch")));
+    expect(audits).toHaveLength(1);
+  });
+});
+
 describe("audit log", () => {
   it("records AI/system/user/client actors with rationale", async () => {
     const a = await getDb().select().from(auditEvents).where(eq(auditEvents.contractId, contractId));
     const actions = new Set(a.map((x) => x.action));
-    for (const k of ["terms_extracted", "terms_confirmed", "evidence_mapped", "evidence_confirmed", "submitted", "accepted", "rejected", "auto_accepted", "draft_built", "lines_written", "sent", "status_synced", "reminder_sent", "late_fee_assessed", "duplicate_probe", "invoice_blocked"]) {
+    for (const k of ["terms_extracted", "terms_confirmed", "evidence_mapped", "evidence_confirmed", "submitted", "accepted", "rejected", "auto_accepted", "draft_built", "lines_written", "sent", "status_synced", "reminder_sent", "late_fee_assessed", "duplicate_probe", "invoice_blocked", "reconciled"]) {
       expect(actions, k).toContain(k);
     }
     expect(a.filter((x) => x.action === "evidence_mapped").every((x) => x.rationale)).toBe(true);

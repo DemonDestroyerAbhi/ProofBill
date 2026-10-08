@@ -34,6 +34,7 @@ export default async function MockPay({ params }: { params: Promise<{ id: string
             <dt>Due</dt><dd>{inv.due_amount?.value}</dd>
             <dt>Due date</dt><dd>{inv.detail.payment_term?.due_date}</dd>
           </dl>
+          {due <= 0 && inv.status === "PAID" && <div className="form-msg ok">Paid in full — thank you.</div>}
           {due > 0 && inv.status !== "CANCELLED" && (
             <ActionForm action={mockPayAction.bind(null, id)} className="row">
               <input type="number" name="amount" step="0.01" min="0.01" max={due} defaultValue={due} style={{ width: 160 }} />

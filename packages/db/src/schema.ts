@@ -205,6 +205,12 @@ export const invoices = pgTable(
     lastReminderAt: timestamp("last_reminder_at", { withTimezone: true }),
     reminderCount: integer("reminder_count").notNull().default(0),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
+    /** Transaction Search reconciliation: PayPal's fee and what actually landed, from matched transactions. */
+    feeCents: integer("fee_cents"),
+    netCents: integer("net_cents"),
+    /** matched | pending (search lags up to 3h) | mismatch */
+    reconcileStatus: text("reconcile_status"),
+    reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -231,6 +237,25 @@ export const invoiceLines = pgTable("invoice_lines", {
   evidenceIds: uuid("evidence_ids").array().notNull().default(sql`'{}'::uuid[]`),
   descriptionBy: actor("description_by").notNull().default("system"),
 });
+
+/** PayPal transactions that paid an invoice, found via Transaction Search (PayPal Server SDK). */
+export const invoicePayments = pgTable(
+  "invoice_payments",
+  {
+    id: id(),
+    invoiceId: uuid("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+    transactionId: text("transaction_id").notNull(),
+    status: text("status").notNull(),
+    eventCode: text("event_code"),
+    initiatedAt: timestamp("initiated_at", { withTimezone: true }),
+    grossCents: integer("gross_cents").notNull(),
+    feeCents: integer("fee_cents").notNull(),
+    netCents: integer("net_cents").notNull(),
+    currency: text("currency").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("invoice_payments_txn_uq").on(t.invoiceId, t.transactionId)],
+);
 
 export const auditEvents = pgTable(
   "audit_events",
@@ -274,6 +299,8 @@ export const paypalMockInvoices = pgTable("paypal_mock_invoices", {
   status: text("status").notNull().default("DRAFT"),
   paidCents: integer("paid_cents").notNull().default(0),
   totalCents: integer("total_cents").notNull(),
+  /** Simulated Transaction Search rows for this invoice's payments. */
+  payments: jsonb("payments").$type<unknown[]>().notNull().default([]),
   createdAt: createdAt(),
 });
 
@@ -287,3 +314,4 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InvoiceLine = typeof invoiceLines.$inferSelect;
 export type AuditEvent = typeof auditEvents.$inferSelect;
+export type InvoicePayment = typeof invoicePayments.$inferSelect;

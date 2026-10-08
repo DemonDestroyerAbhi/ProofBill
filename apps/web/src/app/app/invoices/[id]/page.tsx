@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq, evidence as evidenceT, getDb, inArray, invoiceLines, invoices, milestones, auditEvents, desc, clients } from "@proofbill/db";
+import { and, asc, eq, evidence as evidenceT, getDb, inArray, invoiceLines, invoicePayments, invoices, milestones, auditEvents, desc, clients } from "@proofbill/db";
 import { getContract, NotFoundError, paypalMode, portalUrl } from "@proofbill/services";
 import { requireUser } from "@/lib/session";
 import { date, dateTime, money } from "@/lib/format";
@@ -8,6 +8,7 @@ import { ActionForm, Submit } from "@/components/action-form";
 import { ActorTag, Badge, Card, EvidenceIcon } from "@/components/ui";
 import {
   cancelInvoiceAction,
+  reconcileAction,
   discardDraftAction,
   duplicateProbeAction,
   refreshInvoiceAction,
@@ -24,11 +25,12 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   if (!inv) notFound();
   const c = await getContract(user.id, inv.contractId).catch((e) => (e instanceof NotFoundError ? null : Promise.reject(e)));
   if (!c) notFound();
-  const [lines, [m], [client], log] = await Promise.all([
+  const [lines, [m], [client], log, payments] = await Promise.all([
     db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position)),
     inv.milestoneId ? db.select().from(milestones).where(eq(milestones.id, inv.milestoneId)) : Promise.resolve([]),
     c.clientId ? db.select().from(clients).where(eq(clients.id, c.clientId)) : Promise.resolve([]),
     db.select().from(auditEvents).where(and(eq(auditEvents.entity, "invoice"), eq(auditEvents.entityId, inv.id))).orderBy(desc(auditEvents.at)),
+    db.select().from(invoicePayments).where(eq(invoicePayments.invoiceId, inv.id)).orderBy(asc(invoicePayments.initiatedAt)),
   ]);
   const evIds = [...new Set(lines.flatMap((l) => l.evidenceIds))];
   const ev = evIds.length ? await db.select().from(evidenceT).where(inArray(evidenceT.id, evIds)) : [];
@@ -182,6 +184,56 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </div>
         </Card>
       </div>
+
+      {inv.paidCents > 0 && (
+        <Card
+          title="Payments received"
+          sub="PayPal Transaction Search · PayPal Server SDK"
+          actions={
+            <ActionForm action={reconcileAction.bind(null, inv.id)} className="row">
+              <Submit className="btn sm" pendingText="Searching PayPal…">↻ Reconcile with PayPal</Submit>
+            </ActionForm>
+          }
+          pad={false}
+        >
+          {payments.length === 0 ? (
+            <div className="card-body">
+              <small>No matching PayPal transactions yet. Transaction Search can take up to 3 hours to list a new payment.</small>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr><th>Transaction</th><th>Date</th><th>Status</th><th className="num">Gross</th><th className="num">PayPal fee</th><th className="num">Net received</th></tr>
+                </thead>
+                <tbody>
+                  {payments.map((p) => (
+                    <tr key={p.id}>
+                      <td className="mono">{p.transactionId}</td>
+                      <td>{dateTime(p.initiatedAt)}</td>
+                      <td>{{ S: "Completed", P: "Pending", V: "Reversed", D: "Denied" }[p.status] ?? p.status}</td>
+                      <td className="num">{money(p.grossCents, p.currency)}</td>
+                      <td className="num">−{money(p.feeCents, p.currency)}</td>
+                      <td className="num"><strong>{money(p.netCents, p.currency)}</strong></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {inv.reconcileStatus && (
+            <div className="card-body">
+              <div className={`callout ${inv.reconcileStatus === "matched" ? "good" : inv.reconcileStatus === "mismatch" ? "bad" : "warn"}`}>
+                {inv.reconcileStatus === "matched" &&
+                  `Reconciled: PayPal transactions account for all ${money(inv.paidCents, inv.currency)} paid. You received ${money(inv.netCents, inv.currency)} after ${money(inv.feeCents, inv.currency)} in PayPal fees.`}
+                {inv.reconcileStatus === "pending" && "Waiting for Transaction Search to list the latest payment (up to 3 hours)."}
+                {inv.reconcileStatus === "mismatch" && `PayPal Invoicing reports ${money(inv.paidCents, inv.currency)} paid, but completed transactions don't add up — check the PayPal dashboard.`}
+                {inv.reconciledAt && <small style={{ display: "block", marginTop: 4 }}>Checked {dateTime(inv.reconciledAt)}</small>}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card title="Invoice history">
         {log.map((a) => (

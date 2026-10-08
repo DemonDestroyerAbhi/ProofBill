@@ -29,6 +29,7 @@ import {
   syncInvoiceFromPayPal,
   updateDraftText,
   seedDemoWorkspace,
+  reconcileInvoice,
 } from "@proofbill/services";
 import { getDb, invoices, eq, repos } from "@proofbill/db";
 import { requireUser } from "@/lib/session";
@@ -222,6 +223,19 @@ export async function refreshInvoiceAction(invoiceId: string, _: ActionState): P
     await ownInvoice(user.id, invoiceId);
     const inv = await syncInvoiceFromPayPal(invoiceId, "manual refresh");
     return `PayPal status: ${inv?.status ?? "not on PayPal"}`;
+  });
+  revalidatePath(`/app/invoices/${invoiceId}`);
+  return r;
+}
+
+export async function reconcileAction(invoiceId: string, _: ActionState): Promise<ActionState> {
+  const user = await requireUser();
+  const r = await attempt(async () => {
+    await ownInvoice(user.id, invoiceId);
+    const res = await reconcileInvoice(invoiceId);
+    if (res.status === "skipped") return "Nothing to reconcile yet — no payments received";
+    const label = { matched: "Matched ✓", pending: "Pending — Transaction Search can lag up to 3 hours", mismatch: "Mismatch — see invoice history" }[res.status];
+    return `${label}. ${res.newTransactions} new transaction${res.newTransactions === 1 ? "" : "s"}.`;
   });
   revalidatePath(`/app/invoices/${invoiceId}`);
   return r;

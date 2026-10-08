@@ -37,7 +37,7 @@ Click **Try the demo workspace**. Without credentials, ProofBill runs in offline
 
 | To enable | Set |
 |---|---|
-| PayPal sandbox | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENV=sandbox`, `PAYER_EMAIL` (sandbox **Personal** account — demo invoices go there), `PAYPAL_WEBHOOK_ID` (webhook → `https://<host>/api/webhooks/paypal`, events `INVOICING.INVOICE.*`) |
+| PayPal sandbox | Tick **Invoicing** and **Transaction search** on the REST app. `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENV=sandbox`, `PAYER_EMAIL` (sandbox **Personal** account — demo invoices go there), `PAYPAL_WEBHOOK_ID` (webhook → `https://<host>/api/webhooks/paypal`, events `INVOICING.INVOICE.*`) |
 | Gemini | `GEMINI_API_KEY` (optional `GEMINI_MODEL`, default `gemini-flash-latest`) |
 | GitHub login | `GITHUB_OAUTH_CLIENT_ID/SECRET` (callback `https://<host>/api/auth/github/callback`) |
 | GitHub webhooks | `GITHUB_WEBHOOK_SECRET` (payload URL `https://<host>/api/webhooks/github`, event *Pull requests*) |
@@ -97,6 +97,7 @@ flowchart LR
 - **Idempotency:** deterministic invoice numbers (`PB-<code>-M<n>`), DB uniqueness (one live invoice per milestone), a claimed `sending` state against double-clicks, `PayPal-Request-Id` per operation, and on `DUPLICATE_INVOICE_ID` the existing PayPal invoice is found by number and adopted instead of creating another. Proven by the negative test and integration tests.
 - **Webhooks:** PayPal signatures verified via `POST /v1/notifications/verify-webhook-signature` with `PAYPAL_WEBHOOK_ID`; GitHub via HMAC `X-Hub-Signature-256`. Both deduped by event/delivery id. PayPal state is re-read from the API (source of truth); the cron re-syncs open invoices in case a webhook is missed.
 - **Hours are never inferred from commits.** Hourly work comes from user-entered time entries only.
+- **Reconciliation:** when a payment arrives, and again on the cron, ProofBill looks up the matching PayPal transactions with **Transaction Search** (matched by PayPal invoice id or invoice number). It records each transaction's gross, PayPal fee and net, shows *net received* in the invoice and the ledger, and flags a mismatch if the transactions don't add up to what Invoicing reports. Search results can lag by up to 3 hours, which counts as *pending* rather than a mismatch.
 - **Audit log:** every AI output is stored with its rationale and source (clause, PR) and shown per contract and per invoice, alongside user, client and system actions.
 
 **Late-fee policy:** simple interest at the contract rate on the balance outstanding, once per full 30 days overdue, issued as a separate PayPal invoice (`…-LF<n>`, idempotent per period). Late fees don't count toward the contract cap.
@@ -116,7 +117,7 @@ For the hackathon, one sandbox US Business account is the demo freelancer and a 
 | **Render** | Blueprint (`render.yaml`): web service, background worker, cron job and Postgres; migrations run as a pre-deploy command. |
 | **Timeline** | Milestone Gantt (dependencies, due dates, acceptance windows, invoice due markers, progress from confirmed evidence) rendered as SVG — the planned fallback while the Bryntum Gantt license is unconfirmed. |
 | **GitHub** | REST polling of merged PRs for any public repo, PR webhooks, OAuth login. |
-| **APIMatic Context Plugin** | The PayPal Server SDK Context Plugin's TypeScript skills are checked in under [`.claude/skills/`](.claude/skills/README.md), so every coding-agent session on this repo has grounded knowledge of `@paypal/paypal-server-sdk` (Orders, Payments, Vault, Subscriptions, Transaction Search). The plugin doesn't cover Invoicing v2, which stays on our REST client. |
+| **APIMatic Context Plugin** + **PayPal Server SDK** | Payment reconciliation is built on `@paypal/paypal-server-sdk` (APIMatic-generated) with the PayPal Server SDK Context Plugin's TypeScript skills, which are checked in under [`.claude/skills/`](.claude/skills/README.md). The skills' guidance shaped the client setup: an explicit timeout (the SDK default of 0 means no timeout), GET retries enabled through both retry fields, Transaction Search's 31-day windows with manual paging, and tests that use a stub adapter and a seeded OAuth token. They also led to one finding: `SearchError` arrives with `result` unparsed, so we fall back to the raw body. The plugin doesn't cover Invoicing v2, which stays on our REST client. |
 
 ## Development
 

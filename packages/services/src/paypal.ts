@@ -5,6 +5,10 @@ import {
   moneyToCents,
   PayPalApiError,
   PayPalRestClient,
+  TransactionSearchLookup,
+  type InvoicePayment,
+  type PaymentLookup,
+  type PaymentLookupArgs,
   type InvoiceBody,
   type InvoicingApi,
   type PayPalInvoice,
@@ -24,9 +28,23 @@ export function invoicing(): InvoicingApi {
   return cached;
 }
 
+let cachedLookup: PaymentLookup | null = null;
+
+/** Transaction Search (PayPal Server SDK) in sandbox/live; the simulator's recorded payments in mock mode. */
+export function paymentLookup(): PaymentLookup {
+  const mode = paypalMode();
+  if (cachedLookup && cachedLookup.mode === mode) return cachedLookup;
+  cachedLookup =
+    mode === "mock"
+      ? (invoicing() as MockInvoicing)
+      : new TransactionSearchLookup({ clientId: process.env.PAYPAL_CLIENT_ID!, clientSecret: process.env.PAYPAL_CLIENT_SECRET!, env: mode });
+  return cachedLookup;
+}
+
 /** For tests. */
 export function setInvoicing(api: InvoicingApi | null): void {
   cached = api;
+  cachedLookup = null;
 }
 
 function totalCents(body: InvoiceBody): number {
@@ -45,7 +63,12 @@ const dupErr = (path: string) =>
  * PayPal-Request-Id replay, DUPLICATE_INVOICE_ID on reused numbers and on the negative-test header,
  * SENT → PARTIALLY_PAID → PAID. State lives in Postgres so web + worker share it.
  */
-export class MockInvoicing implements InvoicingApi {
+/** PayPal's standard US invoicing rate, used only to simulate fees offline. */
+function simulatedFeeCents(gross: number): number {
+  return Math.round(gross * 0.0349) + 49;
+}
+
+export class MockInvoicing implements InvoicingApi, PaymentLookup {
   readonly mode = "mock" as const;
 
   private async row(id: string) {
@@ -122,6 +145,14 @@ export class MockInvoicing implements InvoicingApi {
     await getDb().update(paypalMockInvoices).set({ status: "CANCELLED" }).where(eq(paypalMockInvoices.id, id));
   }
 
+  async findInvoicePayments(args: PaymentLookupArgs): Promise<InvoicePayment[]> {
+    const [r] = await getDb().select().from(paypalMockInvoices).where(eq(paypalMockInvoices.id, args.paypalInvoiceId));
+    return ((r?.payments ?? []) as InvoicePayment[]).filter((p) => {
+      const t = p.initiatedAt ? Date.parse(p.initiatedAt) : 0;
+      return t >= args.since.getTime() && t <= args.until.getTime();
+    });
+  }
+
   async verifyWebhookSignature(): Promise<boolean> {
     return false; // mock events never arrive over HTTP; they're applied in-process by simulatePayment()
   }
@@ -141,7 +172,21 @@ export class MockInvoicing implements InvoicingApi {
     }
     const paidCents = r.paidCents + cents;
     const status = paidCents >= r.totalCents ? "PAID" : "PARTIALLY_PAID";
-    await getDb().update(paypalMockInvoices).set({ paidCents, status }).where(eq(paypalMockInvoices.id, id));
+    const fee = simulatedFeeCents(cents);
+    const txn: InvoicePayment = {
+      transactionId: `MOCK${randomBytes(7).toString("hex").toUpperCase()}`.slice(0, 17),
+      status: "S",
+      eventCode: "T0007",
+      initiatedAt: new Date().toISOString(),
+      grossCents: cents,
+      feeCents: fee,
+      netCents: cents - fee,
+      currency: body.detail.currency_code,
+    };
+    await getDb()
+      .update(paypalMockInvoices)
+      .set({ paidCents, status, payments: [...(r.payments as InvoicePayment[]), txn] })
+      .where(eq(paypalMockInvoices.id, id));
     return { status, paidCents, totalCents: r.totalCents };
   }
 }

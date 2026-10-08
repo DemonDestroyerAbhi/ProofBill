@@ -8,6 +8,7 @@ export * from "./github";
 export * from "./evidence";
 export * from "./milestones";
 export * from "./invoices";
+export * from "./reconcile";
 export * from "./ledger";
 export * from "./jobs";
 export * from "./seed";

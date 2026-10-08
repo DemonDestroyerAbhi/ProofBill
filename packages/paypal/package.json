@@ -13,5 +13,8 @@
     "@types/node": "^22.18.0",
     "typescript": "~5.9.3",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@paypal/paypal-server-sdk": "2.5.0"
   }
 }

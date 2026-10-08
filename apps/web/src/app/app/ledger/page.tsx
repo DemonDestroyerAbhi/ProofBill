@@ -20,7 +20,11 @@ export default async function LedgerPage() {
       </div>
       <div className="grid-4">
         <div className="card stat"><div className="label">Invoices</div><div className="value">{invs.length}</div></div>
-        <div className="card stat"><div className="label">Collected</div><div className="value">{money(Math.round(invs.reduce((s, r) => s + r.paid, 0) * 100))}</div></div>
+        <div className="card stat">
+          <div className="label">Collected</div>
+          <div className="value">{money(Math.round(invs.reduce((s, r) => s + r.paid, 0) * 100))}</div>
+          <small>net after PayPal fees {money(Math.round(invs.reduce((s, r) => s + (r.net ?? 0), 0) * 100))}</small>
+        </div>
         <div className="card stat"><div className="label">Outstanding</div><div className="value">{money(Math.round(outstanding * 100))}</div></div>
         <div className="card stat"><div className="label">Overdue</div><div className="value" style={{ color: overdue.length ? "var(--bad)" : undefined }}>{overdue.length}</div></div>
       </div>

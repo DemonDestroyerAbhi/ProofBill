@@ -45,6 +45,7 @@ import { GuardrailError, NotFoundError, freelancerDisplayName, getContract } fro
 import { portalUrl } from "./env";
 import { unbilledTime } from "./milestones";
 import { MockInvoicing, invoicing } from "./paypal";
+import { reconcileOutstanding, tryReconcile } from "./reconcile";
 
 /** Sum of every live (non-cancelled) milestone invoice on the contract — what the cap is measured against. */
 async function billingHistory(contractId: string, excludeInvoiceId?: string) {
@@ -364,6 +365,7 @@ export async function syncInvoiceFromPayPal(invoiceId: string, cause: string): P
     summary: `${inv.number}: ${inv.status} → ${pp.status}, paid ${centsToString(paidCents)} of ${centsToString(inv.amountCents)} ${inv.currency} (${cause})`,
     source: { paypalInvoiceId: inv.paypalInvoiceId },
   });
+  if (paidCents > inv.paidCents) await tryReconcile(inv.id);
   return u!;
 }
 
@@ -472,13 +474,15 @@ export async function sendReminder(invoiceId: string, actor: "user" | "system", 
 }
 
 /** Cron: overdue reminders (1 day overdue, then weekly) + late-fee invoices per the contract. */
-export async function runCollections(now = new Date()): Promise<{ reminders: number; lateFees: number; synced: number; errors: string[] }> {
+export async function runCollections(
+  now = new Date(),
+): Promise<{ reminders: number; lateFees: number; synced: number; reconciled: number; errors: string[] }> {
   const db = getDb();
   const open = await db
     .select()
     .from(invoices)
     .where(sql`${invoices.status} IN ('SENT','PARTIALLY_PAID','UNPAID','PAYMENT_PENDING') AND ${invoices.paypalInvoiceId} IS NOT NULL`);
-  const out = { reminders: 0, lateFees: 0, synced: 0, errors: [] as string[] };
+  const out = { reminders: 0, lateFees: 0, synced: 0, reconciled: 0, errors: [] as string[] };
   for (const inv0 of open) {
     try {
       // Webhooks are primary; this is the safety net if one was missed.
@@ -495,6 +499,9 @@ export async function runCollections(now = new Date()): Promise<{ reminders: num
       out.errors.push(`${inv0.number}: ${(e as Error).message}`);
     }
   }
+  const rec = await reconcileOutstanding(now);
+  out.reconciled = rec.matched;
+  out.errors.push(...rec.errors);
   return out;
 }
 
