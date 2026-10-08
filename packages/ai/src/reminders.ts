@@ -50,7 +50,7 @@ export function templateReminder(ctx: ReminderContext): ReminderOutput {
   const thanks = ctx.partiallyPaid ? "Thank you for the payment already received. " : "";
   const fee = ctx.lateFeePctMonthly ? " Please note the contract's late-fee clause applies to overdue balances." : "";
   const notes: Record<ReminderOutput["tone"], string> = {
-    friendly: `Hi ${ctx.clientName}, ${thanks}just a friendly reminder that invoice ${ctx.invoiceNumber} for "${ctx.milestoneTitle}" is now due. The evidence for each acceptance criterion is linked on the invoice. Thanks!`,
+    friendly: `Hi ${ctx.clientName}, ${thanks}${thanks ? "Just" : "just"} a friendly reminder that invoice ${ctx.invoiceNumber} for "${ctx.milestoneTitle}" is now due. The evidence for each acceptance criterion is linked on the invoice. Thanks!`,
     firm: `Hi ${ctx.clientName}, ${thanks}invoice ${ctx.invoiceNumber} for the accepted milestone "${ctx.milestoneTitle}" is ${ctx.daysOverdue} days past due. Could you arrange payment this week?${fee}`,
     final: `Hi ${ctx.clientName}, ${thanks}invoice ${ctx.invoiceNumber} for "${ctx.milestoneTitle}" remains unpaid ${ctx.daysOverdue} days after its due date. Please settle the balance or contact me so we can agree a plan.${fee}`,
   };

@@ -1,6 +1,7 @@
 import { mapEvidence } from "@proofbill/ai";
 import { gateMapping, milestoneProgress } from "@proofbill/core";
-import { and, asc, contracts, eq, evidence, getDb, isNull, milestones, repos, type Evidence } from "@proofbill/db";
+import { createHash } from "node:crypto";
+import { and, asc, contracts, eq, evidence, evidenceFiles, getDb, isNull, milestones, repos, type Evidence } from "@proofbill/db";
 import { audit } from "./audit";
 import { GuardrailError, NotFoundError, getContract } from "./contracts";
 import { fetchMergedPrs, fetchPrFiles, parseRepo, repoExists, type MergedPr } from "./github";
@@ -239,4 +240,59 @@ export async function recomputeProgress(milestoneId: string): Promise<void> {
   // Evidence the freelancer attached manually counts as one criterion's worth if no AI criteria were recorded.
   const coveredCount = Math.max(covered.size, Math.min(ev.length, m.acceptanceCriteria.length));
   await db.update(milestones).set({ progress: milestoneProgress(m.status, m.acceptanceCriteria.length, coveredCount) }).where(eq(milestones.id, milestoneId));
+}
+
+export const MAX_EVIDENCE_FILE_BYTES = 5 * 1024 * 1024;
+
+/** File or link evidence attached by the freelancer (Figma, docs, screenshots). */
+export async function addManualEvidence(
+  userId: string,
+  contractId: string,
+  input: { kind: "link"; url: string; title: string; milestoneId: string | null } | { kind: "file"; name: string; mime: string; bytes: Uint8Array; title: string; milestoneId: string | null },
+): Promise<Evidence | null> {
+  await getContract(userId, contractId);
+  const db = getDb();
+  if (input.milestoneId) {
+    const [m] = await db.select().from(milestones).where(and(eq(milestones.id, input.milestoneId), eq(milestones.contractId, contractId)));
+    if (!m) throw new NotFoundError("Milestone");
+  }
+  if (input.kind === "link") {
+    let u: URL;
+    try {
+      u = new URL(input.url);
+    } catch {
+      throw new GuardrailError("BAD_URL", "Enter a full URL (https://…)");
+    }
+    if (!/^https?:$/.test(u.protocol)) throw new GuardrailError("BAD_URL", "Only http(s) links");
+    return addEvidence(contractId, { type: "link", ref: u.toString(), url: u.toString(), title: input.title || u.hostname, milestoneId: input.milestoneId, meta: { host: u.hostname } }, "user");
+  }
+  if (input.bytes.byteLength > MAX_EVIDENCE_FILE_BYTES) throw new GuardrailError("TOO_LARGE", "Files up to 5 MB");
+  const sha = createHash("sha256").update(input.bytes).digest("hex");
+  const ev = await addEvidence(
+    contractId,
+    { type: "file", ref: `sha256:${sha}`, url: null, title: input.title || input.name, milestoneId: input.milestoneId, meta: { name: input.name, mime: input.mime, size: input.bytes.byteLength, sha256: sha } },
+    "user",
+  );
+  if (ev) {
+    const [f] = await db
+      .insert(evidenceFiles)
+      .values({ evidenceId: ev.id, name: input.name, mime: input.mime || "application/octet-stream", size: input.bytes.byteLength, sha256: sha, bytes: Buffer.from(input.bytes) })
+      .returning({ id: evidenceFiles.id });
+    await db.update(evidence).set({ url: `/api/evidence-files/${f!.id}` }).where(eq(evidence.id, ev.id));
+  }
+  return ev;
+}
+
+/** Files are visible to the owning freelancer, or to the client holding the contract's portal token. */
+export async function getEvidenceFile(fileId: string, access: { userId?: string | null; portalToken?: string | null }) {
+  const db = getDb();
+  const [row] = await db
+    .select({ f: evidenceFiles, c: contracts })
+    .from(evidenceFiles)
+    .innerJoin(evidence, eq(evidenceFiles.evidenceId, evidence.id))
+    .innerJoin(contracts, eq(evidence.contractId, contracts.id))
+    .where(eq(evidenceFiles.id, fileId));
+  if (!row) return null;
+  if ((access.userId && row.c.userId === access.userId) || (access.portalToken && row.c.portalToken === access.portalToken)) return row.f;
+  return null;
 }

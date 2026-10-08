@@ -19,6 +19,3 @@ export function portalUrl(token: string): string {
   return `${appUrl()}/portal/${token}`;
 }
 
-export function freelancerName(): string {
-  return process.env.FREELANCER_NAME || "Your freelancer";
-}

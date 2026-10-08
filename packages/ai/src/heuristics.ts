@@ -23,7 +23,13 @@ function lines(doc: string): Line[] {
   return out;
 }
 
-const clean = (s: string) => s.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+const clean = (s: string) =>
+  s
+    .replace(/\*\*/g, "")
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, "")
+    .replace(/\s*\|\s*/g, " · ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 function find(ls: Line[], re: RegExp): { m: RegExpMatchArray; src: SourceRef } | null {
   for (const l of ls) {

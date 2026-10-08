@@ -17,6 +17,7 @@ import {
   repos,
   timeEntries,
   inArray,
+  users,
   type Contract,
 } from "@proofbill/db";
 import { audit } from "./audit";
@@ -247,4 +248,11 @@ export type ContractBundle = Awaited<ReturnType<typeof loadContractBundle>>;
 export async function contractByPortalToken(token: string): Promise<Contract | null> {
   const [c] = await getDb().select().from(contracts).where(eq(contracts.portalToken, token));
   return c && c.status !== "draft" ? c : null;
+}
+
+/** Name shown to the client (portal, reminders): FREELANCER_NAME override, else the owner's GitHub name/login. */
+export async function freelancerDisplayName(contract: Pick<Contract, "userId">): Promise<string> {
+  if (process.env.FREELANCER_NAME) return process.env.FREELANCER_NAME;
+  const [u] = await getDb().select().from(users).where(eq(users.id, contract.userId));
+  return u?.name || u?.login || "Your freelancer";
 }

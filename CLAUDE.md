@@ -231,3 +231,17 @@ Next:
 - `render.yaml` — Blueprint (web, worker, cron, Postgres; Starter plans; confirm plan names)
 - `.env.example` — all env vars
 - `sample-sow.md` — demo contract (Larkspur Labs; 3 milestones $600/$900/$700; $40/h change requests capped 20h; total cap $3,000; Net-15; partial min 25%; late fee 1.5%/mo; 5-business-day acceptance)
+
+---
+
+## 14. Implementation notes (build log)
+
+- Extra package `packages/services`: workflows shared by web/worker/cron (contracts, evidence, milestones, invoices, ledger, seed). Every state change writes `audit_events`.
+- `PAYPAL_ENV=mock` (or missing PayPal creds) → offline Invoicing simulator in Postgres (`paypal_mock_invoices`) with request-id replay, `DUPLICATE_INVOICE_ID`, partial-payment minimum and a payer page at `/mock-paypal/pay/:id`. Never used in sandbox/live.
+- No `ANTHROPIC_API_KEY` → labelled heuristic extraction/mapping + template text (`packages/ai/src/heuristics.ts`). Live check: `pnpm --filter @proofbill/ai eval`.
+- Change-request hourly clause on a fixed contract becomes an extra hourly milestone ("Change requests (hourly)") at confirm time.
+- One live invoice per milestone (partial unique index). Hourly milestone = one invoice; more hours later → add another hourly milestone.
+- Late fees: separate invoice `…-LF<n>` per full 30 days overdue, simple interest on outstanding balance, excluded from cap.
+- Timeline is an SVG Gantt (Bryntum fallback). Bryntum's npm package is private/licensed — swap in if the license is confirmed.
+- Judge mode: `POST /api/auth/demo` → shared demo user + seeded Larkspur workspace (`DEMO_MODE=off` disables). Demo invoices go to `PAYER_EMAIL`.
+- Tests: `packages/services/test/flow.test.ts` drives the whole flow against a real Postgres (`TEST_DATABASE_URL`, schema dropped each run).

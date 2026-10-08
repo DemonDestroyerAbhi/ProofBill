@@ -1,20 +1,28 @@
-# Render Blueprint — lets judges one-click deploy. Plan names: confirm in Render dashboard.
-# Free tier won't work: free Postgres expires after ~30 days, workers/crons aren't free,
-# free web services sleep. Use Starter plans on hackathon credits.
+# Render Blueprint — one-click deploy: web + worker + cron + Postgres.
+# Plan names: confirm in the Render dashboard. Free tier won't work (free Postgres expires after ~30 days,
+# workers/crons aren't free, free web services sleep). Use Starter plans on hackathon credits.
 envVarGroups:
   - name: proofbill-shared
     envVars:
       - key: PAYPAL_ENV
-        value: sandbox
+        value: sandbox # "mock" runs the offline simulator (no PayPal credentials needed)
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
         sync: false
       - key: PAYPAL_WEBHOOK_ID
         sync: false
+      - key: PAYER_EMAIL # sandbox PERSONAL account — demo invoices are addressed here
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: GITHUB_TOKEN
+        sync: false
+      - key: APP_URL # public URL of proofbill-web, e.g. https://proofbill-web.onrender.com
+        sync: false
+      - key: FREELANCER_NAME
+        sync: false
+      - key: DEMO_REPO
         sync: false
       - key: SESSION_SECRET
         generateValue: true
@@ -26,11 +34,20 @@ services:
     plan: starter
     region: oregon
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter web build
+    preDeployCommand: pnpm --filter @proofbill/db migrate
     startCommand: pnpm --filter web start
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
         fromDatabase: { name: proofbill-db, property: connectionString }
+      - key: GITHUB_OAUTH_CLIENT_ID
+        sync: false
+      - key: GITHUB_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: AG_GRID_LICENSE_KEY
+        sync: false
       - fromGroup: proofbill-shared
 
   - type: worker
@@ -50,7 +67,7 @@ services:
     runtime: node
     plan: starter
     region: oregon
-    schedule: "0 */6 * * *"   # every 6h: overdue reminders + late fees
+    schedule: "0 */6 * * *" # every 6h: sync open invoices, overdue reminders, late fees
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter worker build
     startCommand: pnpm --filter worker reminders
     envVars:

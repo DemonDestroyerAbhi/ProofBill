@@ -41,8 +41,8 @@ import {
 } from "@proofbill/db";
 import { buildInvoiceBody, moneyToCents, payerLink, PayPalApiError, DUPLICATE_INVOICE_MOCK, type PayPalInvoice } from "@proofbill/paypal";
 import { audit } from "./audit";
-import { GuardrailError, NotFoundError, getContract } from "./contracts";
-import { freelancerName, portalUrl } from "./env";
+import { GuardrailError, NotFoundError, freelancerDisplayName, getContract } from "./contracts";
+import { portalUrl } from "./env";
 import { unbilledTime } from "./milestones";
 import { MockInvoicing, invoicing } from "./paypal";
 
@@ -440,7 +440,7 @@ export async function sendReminder(invoiceId: string, actor: "user" | "system", 
   const daysOverdue = inv.dueDate ? Math.max(0, daysBetween(parseDate(inv.dueDate), now)) : 0;
   const ctx = {
     clientName: client?.name ?? "there",
-    freelancerName: freelancerName(),
+    freelancerName: c ? await freelancerDisplayName(c) : "Your freelancer",
     invoiceNumber: inv.number,
     milestoneTitle: m?.title ?? (inv.kind === "late_fee" ? "late fee" : "services"),
     daysOverdue,
@@ -483,7 +483,7 @@ export async function runCollections(now = new Date()): Promise<{ reminders: num
     try {
       // Webhooks are primary; this is the safety net if one was missed.
       const inv = (await syncInvoiceFromPayPal(inv0.id, "collections sync")) ?? inv0;
-      if (inv !== inv0) out.synced++;
+      if (inv.status !== inv0.status || inv.paidCents !== inv0.paidCents) out.synced++;
       if (!isOpenStatus(inv.status) || !inv.dueDate) continue;
       const due = parseDate(inv.dueDate);
       if (isReminderDue({ dueDate: due, now, lastReminderAt: inv.lastReminderAt })) {

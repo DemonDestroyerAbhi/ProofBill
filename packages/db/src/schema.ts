@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -154,6 +155,20 @@ export const evidence = pgTable(
   },
   (t) => [uniqueIndex("evidence_contract_type_ref_uq").on(t.contractId, t.type, t.ref)],
 );
+
+const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
+
+/** Uploaded evidence files (designs, docs, screenshots) — so non-dev freelancers have evidence too. Small files only. */
+export const evidenceFiles = pgTable("evidence_files", {
+  id: id(),
+  evidenceId: uuid("evidence_id").notNull().references(() => evidence.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  mime: text("mime").notNull(),
+  size: integer("size").notNull(),
+  sha256: text("sha256").notNull(),
+  bytes: bytea("bytes").notNull(),
+  createdAt: createdAt(),
+});
 
 export const timeEntries = pgTable("time_entries", {
   id: id(),
