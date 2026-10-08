@@ -1,5 +1,5 @@
 import { ExtractedTerms } from "@proofbill/core";
-import { aiEnabled, structured } from "./claude";
+import { aiEnabled, structured } from "./llm";
 import { heuristicExtract } from "./heuristics";
 
 export interface ExtractionResult {
@@ -26,13 +26,7 @@ export async function extractTerms(text: string, filename?: string): Promise<Ext
   const { data, model } = await structured({
     schema: ExtractedTerms,
     system: SYSTEM,
-    effort: "medium",
-    user: [
-      {
-        type: "text",
-        text: `<document name="${(filename ?? "contract").replace(/"/g, "")}">\n${text}\n</document>\n\nExtract the billing terms.`,
-      },
-    ],
+    user: `<document name="${(filename ?? "contract").replace(/"/g, "")}">\n${text}\n</document>\n\nExtract the billing terms.`,
   });
   return { terms: data, by: model };
 }

@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </nav>
         <span className="spacer" />
         <span className="chip" title="PayPal Invoicing environment">PayPal: {mode}</span>
-        {!aiEnabled() && <span className="chip" title="Set ANTHROPIC_API_KEY to enable Claude">AI: offline</span>}
+        {!aiEnabled() && <span className="chip" title="Set GEMINI_API_KEY to enable Gemini">AI: offline</span>}
         {user.isDemo && (
           <form action={resetDemoAction}>
             <button className="btn sm ghost" title="Re-seed the demo workspace">Reset demo</button>

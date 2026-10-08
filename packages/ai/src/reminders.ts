@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiEnabled, structured } from "./claude";
+import { aiEnabled, structured } from "./llm";
 import { mentionsMoney } from "./lines";
 
 export const ReminderOutput = z.object({
@@ -36,7 +36,6 @@ export async function writeReminder(ctx: ReminderContext): Promise<ReminderOutpu
   const { data, model } = await structured({
     schema: ReminderOutput,
     system: SYSTEM,
-    effort: "low",
     maxTokens: 2000,
     user: JSON.stringify(ctx),
   });

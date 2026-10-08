@@ -6,8 +6,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgres://proofbill:proofbill@localhost:5432/proofbill_test",
       PAYPAL_ENV: "mock",
-      ANTHROPIC_API_KEY: "",
-      ANTHROPIC_AUTH_TOKEN: "",
+      GEMINI_API_KEY: "",
+      GOOGLE_API_KEY: "",
       APP_URL: "http://localhost:3000",
       PAYER_EMAIL: "",
     },

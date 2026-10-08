@@ -1,12 +1,12 @@
 /**
  * Extraction eval: runs the live model on sample-sow.md and checks every field + its source clause.
- * Usage: ANTHROPIC_API_KEY=… pnpm --filter @proofbill/ai eval
+ * Usage: GEMINI_API_KEY=… pnpm --filter @proofbill/ai eval
  */
 import { readFileSync } from "node:fs";
 import { aiEnabled, extractTerms, mapEvidence } from "../src";
 
 if (!aiEnabled()) {
-  console.error("Set ANTHROPIC_API_KEY to run the eval against Claude.");
+  console.error("Set GEMINI_API_KEY to run the eval against Gemini.");
   process.exit(2);
 }
 

@@ -86,7 +86,7 @@ export function assistantTools(userId: string): AssistantTool[] {
     {
       name: "list_receivables",
       description: "List invoices with client, milestone, amount, paid, balance, status, due date and days overdue. Optionally filter by client/contract name substring or status.",
-      input_schema: {
+      parameters: {
         type: "object",
         properties: { query: { type: "string", description: "Client or contract name substring" }, status: { type: "string" } },
       },
@@ -106,7 +106,7 @@ export function assistantTools(userId: string): AssistantTool[] {
     {
       name: "list_milestones",
       description: "List contract milestones with status (planned/in_progress/submitted/accepted/rejected/invoiced/paid), fee, due date, acceptance deadline and confirmed evidence count.",
-      input_schema: { type: "object", properties: { query: { type: "string", description: "Client or contract name substring" } } },
+      parameters: { type: "object", properties: { query: { type: "string", description: "Client or contract name substring" } } },
       run: async (input) => {
         const db = getDb();
         const cs = await db.select().from(contracts).where(eq(contracts.userId, userId));
@@ -136,7 +136,7 @@ export function assistantTools(userId: string): AssistantTool[] {
     {
       name: "get_paypal_invoice",
       description: "Fetch the live PayPal Invoicing v2 record for one of our invoice numbers (e.g. PB-LARK1A-M1): status, amount, paid amount, due amount, due date.",
-      input_schema: { type: "object", properties: { invoiceNumber: { type: "string" } }, required: ["invoiceNumber"] },
+      parameters: { type: "object", properties: { invoiceNumber: { type: "string" } }, required: ["invoiceNumber"] },
       run: async (input) => {
         const db = getDb();
         const [inv] = await db.select().from(invoices).where(eq(invoices.number, String(input.invoiceNumber)));

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     await getDb().execute(sql`select 1`);
-    return NextResponse.json({ ok: true, db: "up", paypal: paypalMode(), ai: aiEnabled() ? "claude" : "heuristic" });
+    return NextResponse.json({ ok: true, db: "up", paypal: paypalMode(), ai: aiEnabled() ? "gemini" : "heuristic" });
   } catch (e) {
     return NextResponse.json({ ok: false, db: "down", error: (e as Error).message }, { status: 503 });
   }

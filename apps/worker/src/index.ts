@@ -10,7 +10,7 @@ const INTERVAL = Number(process.env.WORKER_INTERVAL_MS ?? 30_000);
 let stopping = false;
 
 async function loop() {
-  console.log(`proofbill worker up · every ${INTERVAL / 1000}s · paypal=${paypalMode()} · ai=${aiEnabled() ? "claude" : "heuristic"}`);
+  console.log(`proofbill worker up · every ${INTERVAL / 1000}s · paypal=${paypalMode()} · ai=${aiEnabled() ? "gemini" : "heuristic"}`);
   while (!stopping) {
     const t = Date.now();
     try {

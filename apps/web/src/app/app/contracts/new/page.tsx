@@ -8,7 +8,7 @@ export default function NewContract() {
       <div>
         <h1>Upload a contract</h1>
         <p className="muted" style={{ marginTop: 6 }}>
-          SOW, contract or email thread — PDF, DOCX, TXT or Markdown. {aiEnabled() ? "Claude" : "The offline extractor"} proposes the billing terms with
+          SOW, contract or email thread — PDF, DOCX, TXT or Markdown. {aiEnabled() ? "Gemini" : "The offline extractor"} proposes the billing terms with
           the clause each one came from; nothing is used until you confirm it.
         </p>
       </div>

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiEnabled, structured } from "./claude";
+import { aiEnabled, structured } from "./llm";
 
 export interface LineContext {
   key: string;
@@ -53,7 +53,6 @@ export async function writeInvoiceLines(args: {
   const { data, model } = await structured({
     schema: LinesOutput,
     system: SYSTEM,
-    effort: "low",
     maxTokens: 4000,
     user: JSON.stringify(
       {

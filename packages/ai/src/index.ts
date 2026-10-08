@@ -1,4 +1,4 @@
-export { aiEnabled, MODEL, AiRefusalError } from "./claude";
+export { aiEnabled, MODEL, AiBlockedError } from "./llm";
 export * from "./extract";
 export * from "./mapping";
 export * from "./lines";

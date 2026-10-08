@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiEnabled, structured } from "./claude";
+import { aiEnabled, structured } from "./llm";
 import { heuristicMap } from "./heuristics";
 
 export interface MappingMilestone {
@@ -53,7 +53,6 @@ export async function mapEvidence(ev: EvidenceInput, milestones: MappingMileston
   const { data, model } = await structured({
     schema: MappingOutput,
     system: SYSTEM,
-    effort: "low",
     maxTokens: 4000,
     user: `<milestones>\n${ms}\n</milestones>\n\n<evidence>\n${evText}\n</evidence>`,
   });

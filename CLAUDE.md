@@ -63,11 +63,11 @@ Milestone-verified invoicing for freelancers. *The contract says what's owed, th
   apps/worker    evidence→milestone mapper, acceptance-window timer, reminders/late-fee cron
   packages/core  pricing, caps, acceptance rules, guardrails — NO LLM CALLS HERE; unit-tested
   packages/db    schema + migrations (Drizzle or Prisma, Postgres)
-  packages/ai    prompts, JSON schemas, evals (Claude API, structured outputs)
+  packages/ai    prompts, JSON schemas, evals (Gemini API, structured outputs)
   packages/paypal REST client (token cache, PayPal-Request-Id, retries) + Agent Toolkit/MCP wrapper
   ```
 - **Hosting:** Render — Web Service, Background Worker, Cron Job, Postgres (`render.yaml` Blueprint for one-click deploy). **Starter plans on credits** (free Postgres expires ~30 days; workers/crons not free; free web sleeps). Confirm plan names in dashboard.
-- **AI:** Claude API, structured outputs. Store rationale + source (clause/PR) for every AI output.
+- **AI:** Gemini API (`@google/genai`), structured outputs. *(Switched from Claude Oct 8 — Gemini is the only LLM for now.)* Store rationale + source (clause/PR) for every AI output.
 - **PayPal:** Invoicing v2 over **REST = dependable core**. Agent Toolkit/MCP for agent actions where it works; **REST fallback always**.
 - **GitHub:** GitHub OAuth (login), GitHub App (webhooks, own repos), REST polling (public repos judges paste).
 - **UI:** AG Grid (ledger; master-detail is Enterprise → trial watermark OK, no penalty). Bryntum Gantt (milestone timeline) — **license through Dec 15 unconfirmed; fallback = AG Grid timeline**.
@@ -238,7 +238,7 @@ Next:
 
 - Extra package `packages/services`: workflows shared by web/worker/cron (contracts, evidence, milestones, invoices, ledger, seed). Every state change writes `audit_events`.
 - `PAYPAL_ENV=mock` (or missing PayPal creds) → offline Invoicing simulator in Postgres (`paypal_mock_invoices`) with request-id replay, `DUPLICATE_INVOICE_ID`, partial-payment minimum and a payer page at `/mock-paypal/pay/:id`. Never used in sandbox/live.
-- No `ANTHROPIC_API_KEY` → labelled heuristic extraction/mapping + template text (`packages/ai/src/heuristics.ts`). Live check: `pnpm --filter @proofbill/ai eval`.
+- No `GEMINI_API_KEY` → labelled heuristic extraction/mapping + template text (`packages/ai/src/heuristics.ts`). Live check: `pnpm --filter @proofbill/ai eval`.
 - Change-request hourly clause on a fixed contract becomes an extra hourly milestone ("Change requests (hourly)") at confirm time.
 - One live invoice per milestone (partial unique index). Hourly milestone = one invoice; more hours later → add another hourly milestone.
 - Late fees: separate invoice `…-LF<n>` per full 30 days overdue, simple interest on outstanding balance, excluded from cap.

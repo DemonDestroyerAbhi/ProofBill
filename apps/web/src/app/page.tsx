@@ -45,7 +45,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             </p>
             <div className="row" style={{ marginTop: 14, gap: 8 }}>
               <span className="chip">PayPal Invoicing: {paypalMode()}</span>
-              <span className="chip">AI: {aiEnabled() ? "Claude" : "offline heuristics"}</span>
+              <span className="chip">AI: {aiEnabled() ? "Gemini" : "offline heuristics"}</span>
             </div>
           </div>
           <div className="card mock-invoice">

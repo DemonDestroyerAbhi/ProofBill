@@ -62,3 +62,17 @@ describe("guardrails", () => {
     expect(templateReminder({ ...base, daysOverdue: 60, reminderCount: 3 }).tone).toBe("final");
   });
 });
+
+describe("Gemini response schema", async () => {
+  const { jsonSchema } = await import("../src/llm");
+  const { ExtractedTerms } = await import("@proofbill/core");
+  const { MappingOutput } = await import("../src/mapping");
+  it("has no type arrays, $schema, or 2^53 bounds", () => {
+    for (const s of [jsonSchema(ExtractedTerms), jsonSchema(MappingOutput)]) {
+      const j = JSON.stringify(s);
+      expect(j).not.toMatch(/"type":\[/);
+      expect(j).not.toContain("$schema");
+      expect(j).not.toContain("9007199254740991");
+    }
+  });
+});

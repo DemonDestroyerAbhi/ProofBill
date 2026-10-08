@@ -4,7 +4,7 @@
 
 Freelancers chase payments; clients dispute what was delivered. ProofBill closes the gap between *"I did the work"* and *"here's your money"*:
 
-1. **Contract → terms.** Upload a SOW / contract / email thread (PDF, DOCX, text). Claude extracts milestones, acceptance criteria, fees, due dates, dependencies, hourly rate and cap, total cap, Net-N, partial-payment minimum, late fee and acceptance window — **every field cites the clause it came from**. You review, edit, confirm.
+1. **Contract → terms.** Upload a SOW / contract / email thread (PDF, DOCX, text). Gemini extracts milestones, acceptance criteria, fees, due dates, dependencies, hourly rate and cap, total cap, Net-N, partial-payment minimum, late fee and acceptance window — **every field cites the clause it came from**. You review, edit, confirm.
 2. **Evidence → milestones.** Merged GitHub PRs (any public repo via polling, or webhooks), Figma/doc links and uploaded files are mapped to milestones by AI with a **confidence score and rationale**. You confirm each mapping; low-confidence items wait for manual mapping.
 3. **Client acceptance portal.** Mark a milestone complete and your client gets a private evidence portal: every acceptance criterion with the evidence behind it. They **accept** or **request changes with reasons**. Silence past the contract's window (sample SOW: 5 business days) = accepted.
 4. **Acceptance → PayPal invoice.** The amount is **computed in code from the contract** (fixed fee, or logged hours × rate), capped. AI writes the client-readable line descriptions citing evidence. You approve → ProofBill creates and sends the invoice with **PayPal Invoicing v2**, partial payments enabled per the contract.
@@ -25,7 +25,7 @@ Unlike bounty tools (e.g. MergePay), ProofBill handles **client contracts** — 
 ```bash
 corepack enable
 pnpm install
-cp .env.example .env           # leave PayPal/Anthropic blank to run fully offline
+cp .env.example .env           # leave PayPal/Gemini blank to run fully offline
 createdb proofbill             # or point DATABASE_URL at any Postgres 14+
 set -a; . ./.env; set +a
 pnpm db:migrate
@@ -33,12 +33,12 @@ pnpm --filter web build && pnpm --filter web start   # http://localhost:3000
 pnpm --filter worker start                            # second terminal: evidence mapping + auto-accept
 ```
 
-Click **Try the demo workspace**. Without credentials, ProofBill runs in offline mode: a PayPal Invoicing simulator (same idempotency, duplicate and partial-payment rules, with its own payer page) and labelled heuristic extraction/mapping instead of Claude. Add keys to use the real services:
+Click **Try the demo workspace**. Without credentials, ProofBill runs in offline mode: a PayPal Invoicing simulator (same idempotency, duplicate and partial-payment rules, with its own payer page) and labelled heuristic extraction/mapping instead of Gemini. Add keys to use the real services:
 
 | To enable | Set |
 |---|---|
 | PayPal sandbox | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENV=sandbox`, `PAYER_EMAIL` (sandbox **Personal** account — demo invoices go there), `PAYPAL_WEBHOOK_ID` (webhook → `https://<host>/api/webhooks/paypal`, events `INVOICING.INVOICE.*`) |
-| Claude | `ANTHROPIC_API_KEY` |
+| Gemini | `GEMINI_API_KEY` (optional `GEMINI_MODEL`, default `gemini-flash-latest`) |
 | GitHub login | `GITHUB_OAUTH_CLIENT_ID/SECRET` (callback `https://<host>/api/auth/github/callback`) |
 | GitHub webhooks | `GITHUB_WEBHOOK_SECRET` (payload URL `https://<host>/api/webhooks/github`, event *Pull requests*) |
 | Higher GitHub rate limit | `GITHUB_TOKEN` (read-only) |
@@ -69,11 +69,11 @@ flowchart LR
   end
   W & K & C --> S[packages/services<br/>workflows + audit log]
   S --> CORE[packages/core<br/>pricing · caps · acceptance rules<br/>NO LLM CALLS]
-  S --> AI[packages/ai<br/>Claude structured outputs]
+  S --> AI[packages/ai<br/>Gemini structured outputs]
   S --> PP[packages/paypal<br/>Invoicing v2 REST]
   S --> DB
   PP <--> PAYPAL[(PayPal)]
-  AI <--> CLAUDE[(Claude API)]
+  AI <--> GEMINI[(Gemini API)]
   S <--> GH[(GitHub REST / webhooks)]
   PAYPAL -- INVOICING.INVOICE.* --> W
   GH -- pull_request merged --> W
@@ -83,7 +83,7 @@ flowchart LR
 |---|---|
 | `packages/core` | Pure, unit-tested business rules: money in integer cents, invoice pricing (fixed / hourly), hourly cap, contract cap, partial-payment minimum, business-day acceptance windows, milestone state machine + dependencies, late-fee and reminder schedules, invoice numbering. **No LLM calls.** |
 | `packages/db` | Drizzle schema + SQL migrations (Postgres). |
-| `packages/ai` | Claude prompts + JSON schemas: term extraction (with source clauses), evidence mapping (confidence + rationale), invoice line writing, reminder notes, the read-only *Ask the ledger* agent. Deterministic fallbacks for offline mode. `pnpm --filter @proofbill/ai eval` runs a live extraction/mapping eval. |
+| `packages/ai` | Gemini prompts + JSON schemas: term extraction (with source clauses), evidence mapping (confidence + rationale), invoice line writing, reminder notes, the read-only *Ask the ledger* agent. Deterministic fallbacks for offline mode. `pnpm --filter @proofbill/ai eval` runs a live extraction/mapping eval. |
 | `packages/paypal` | Invoicing v2 REST client: token cache, `PayPal-Request-Id` on writes, retries with backoff on 429/5xx, negative-testing header, webhook signature verification, invoice-number search for crash recovery. |
 | `packages/services` | Workflows shared by web/worker/cron; every state change writes an audit event. Includes the offline PayPal simulator. |
 | `apps/web` | Next.js App Router UI, client portal, webhook routes. |
@@ -111,7 +111,7 @@ For the hackathon, one sandbox US Business account is the demo freelancer and a 
 | Tool | How ProofBill uses it |
 |---|---|
 | **PayPal Invoicing v2 (REST)** | Create (`Prefer: return=representation`, `PayPal-Request-Id`), send, get, search, remind, cancel; partial payments with `minimum_amount_due`; `HOURS`/`AMOUNT` units; `INVOICING.INVOICE.*` webhooks with signature verification; Negative Testing (`DUPLICATE_INVOICE_ID`). |
-| **Claude API** (`claude-opus-5-5`) | Structured outputs for term extraction with source clauses, evidence mapping with confidence/rationale, invoice line descriptions and tone-matched reminders; a tool-using read-only agent that answers ledger questions with live PayPal invoice reads. Server-side refusal fallback enabled. |
+| **Gemini API** (`@google/genai`, `gemini-flash-latest` by default) | JSON-schema-constrained output (validated again with zod) for term extraction with source clauses, evidence mapping with confidence/rationale, invoice line descriptions and tone-matched reminders; a function-calling read-only agent that answers ledger questions with live PayPal invoice reads. |
 | **AG Grid** (Enterprise, trial) | Receivables ledger: one row per invoice line, master-detail showing the evidence behind each line, row grouping by client/status, filters and side bar. |
 | **Render** | Blueprint (`render.yaml`): web service, background worker, cron job and Postgres; migrations run as a pre-deploy command. |
 | **Timeline** | Milestone Gantt (dependencies, due dates, acceptance windows, invoice due markers, progress from confirmed evidence) rendered as SVG — the planned fallback while the Bryntum Gantt license is unconfirmed. |

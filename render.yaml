@@ -14,7 +14,7 @@ envVarGroups:
         sync: false
       - key: PAYER_EMAIL # sandbox PERSONAL account — demo invoices are addressed here
         sync: false
-      - key: ANTHROPIC_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
       - key: GITHUB_TOKEN
         sync: false

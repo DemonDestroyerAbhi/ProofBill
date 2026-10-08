@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const EXAMPLES = ["What's still unpaid on Larkspur?", "Which milestones are waiting on the client?", "What's the live PayPal status of my latest invoice?"];
 
-/** Ask-the-ledger agent: Claude with read-only tools over our DB and live PayPal Invoicing. */
+/** Ask-the-ledger agent: Gemini with read-only tools over our DB and live PayPal Invoicing. */
 export function LedgerAssistant({ enabled }: { enabled: boolean }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,7 +25,7 @@ export function LedgerAssistant({ enabled }: { enabled: boolean }) {
     <section className="card card-pad stack-sm">
       <div className="row-between">
         <h2>Ask the ledger</h2>
-        <small className="muted">{enabled ? "Claude · read-only tools: receivables, milestones, live PayPal invoice" : "needs ANTHROPIC_API_KEY"}</small>
+        <small className="muted">{enabled ? "Gemini · read-only tools: receivables, milestones, live PayPal invoice" : "needs GEMINI_API_KEY"}</small>
       </div>
       <form
         className="row"

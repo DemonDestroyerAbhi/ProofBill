@@ -2,7 +2,7 @@ import type { ExtractedTerms, SourceRef } from "@proofbill/core";
 import type { EvidenceInput, MappingMilestone, MappingOutput } from "./mapping";
 
 /**
- * Deterministic fallbacks used when no ANTHROPIC_API_KEY is configured (local dev, CI, judges running
+ * Deterministic fallbacks used when no GEMINI_API_KEY is configured (local dev, CI, judges running
  * without a key). They are labelled "heuristic" everywhere they surface. They handle well-structured
  * SOWs like sample-sow.md; anything messier needs the model.
  */

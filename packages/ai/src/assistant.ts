@@ -1,5 +1,5 @@
-import type Anthropic from "@anthropic-ai/sdk";
-import { aiEnabled, getClient, MODEL } from "./claude";
+import type { Content, FunctionCall, Part } from "@google/genai";
+import { aiEnabled, getClient, MODEL } from "./llm";
 
 /**
  * "Ask the ledger" — a read-only agent over the freelancer's receivables. Tools are supplied by the
@@ -9,7 +9,8 @@ import { aiEnabled, getClient, MODEL } from "./claude";
 export interface AssistantTool {
   name: string;
   description: string;
-  input_schema: Anthropic.Tool.InputSchema;
+  /** JSON Schema for the tool's arguments. */
+  parameters: Record<string, unknown>;
   run: (input: Record<string, unknown>) => Promise<unknown>;
 }
 
@@ -23,49 +24,42 @@ const SYSTEM = `You are ProofBill's ledger assistant for a freelancer. Answer qu
 
 export async function askLedger(question: string, tools: AssistantTool[]): Promise<{ answer: string; trace: AssistantTrace[]; by: string }> {
   if (!aiEnabled()) {
-    return { answer: "The ledger assistant needs ANTHROPIC_API_KEY. The ledger grid above has the same data.", trace: [], by: "none" };
+    return { answer: "The ledger assistant needs GEMINI_API_KEY. The ledger grid below has the same data.", trace: [], by: "none" };
   }
-  const client = getClient();
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: question }];
+  const ai = getClient();
+  const contents: Content[] = [{ role: "user", parts: [{ text: question }] }];
   const trace: AssistantTrace[] = [];
-  const defs: Anthropic.Tool[] = tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
+  const decls = tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters }));
   let model = MODEL;
   for (let turn = 0; turn < 8; turn++) {
-    const res = await client.messages.create({
+    const res = await ai.models.generateContent({
       model: MODEL,
-      max_tokens: 8000,
-      system: SYSTEM,
-      output_config: { effort: "low" },
-      tools: defs,
-      messages,
+      contents,
+      config: { systemInstruction: SYSTEM, tools: [{ functionDeclarations: decls }], temperature: 0, maxOutputTokens: 8000 },
     });
-    model = res.model;
-    if (res.stop_reason === "refusal") return { answer: "I can't help with that request.", trace, by: model };
-    messages.push({ role: "assistant", content: res.content });
-    const uses = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
-    if (res.stop_reason !== "tool_use" || uses.length === 0) {
-      const answer = res.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
-      return { answer: answer || "(no answer)", trace, by: model };
+    model = res.modelVersion ?? MODEL;
+    const content = res.candidates?.[0]?.content;
+    const calls: FunctionCall[] = res.functionCalls ?? [];
+    if (!content || calls.length === 0) {
+      const answer = res.text?.trim();
+      return { answer: answer || "I couldn't answer that.", trace, by: model };
     }
-    const results: Anthropic.ToolResultBlockParam[] = await Promise.all(
-      uses.map(async (u) => {
-        const tool = tools.find((t) => t.name === u.name);
+    contents.push(content);
+    const parts: Part[] = await Promise.all(
+      calls.map(async (call) => {
+        const tool = tools.find((t) => t.name === call.name);
         try {
-          if (!tool) throw new Error(`unknown tool ${u.name}`);
-          const out = await tool.run((u.input ?? {}) as Record<string, unknown>);
-          trace.push({ tool: u.name, input: u.input, ok: true });
-          return { type: "tool_result" as const, tool_use_id: u.id, content: JSON.stringify(out).slice(0, 20000) };
+          if (!tool) throw new Error(`unknown tool ${call.name}`);
+          const out = await tool.run((call.args ?? {}) as Record<string, unknown>);
+          trace.push({ tool: call.name ?? "?", input: call.args, ok: true });
+          return { functionResponse: { id: call.id, name: call.name, response: { result: JSON.parse(JSON.stringify(out ?? null)) } } };
         } catch (e) {
-          trace.push({ tool: u.name, input: u.input, ok: false });
-          return { type: "tool_result" as const, tool_use_id: u.id, content: String((e as Error).message), is_error: true };
+          trace.push({ tool: call.name ?? "?", input: call.args, ok: false });
+          return { functionResponse: { id: call.id, name: call.name, response: { error: (e as Error).message } } };
         }
       }),
     );
-    messages.push({ role: "user", content: results });
+    contents.push({ role: "user", parts });
   }
   return { answer: "Stopped after too many lookups — try a narrower question.", trace, by: model };
 }
