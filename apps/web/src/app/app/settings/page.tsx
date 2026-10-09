@@ -1,9 +1,9 @@
-import { requireUser } from "@/lib/session";
+import { requireFreelancer } from "@/lib/session";
 import { ActionForm, Submit } from "@/components/action-form";
 import { updateProfileAction } from "../../actions";
 
 export default async function SettingsPage() {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   return (
     <main className="container narrow stack-lg">
       <div>

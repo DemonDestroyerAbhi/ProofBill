@@ -122,7 +122,10 @@ Line items: `unit_of_measure` = `AMOUNT` (fixed milestones) or `HOURS` (hourly).
 - One live invoice per milestone (partial unique index). Hourly milestone = one invoice; more hours later → add another hourly milestone.
 - Late fees: separate invoice `…-LF<n>` per full 30 days overdue, simple interest on outstanding balance, excluded from cap.
 - Timeline is an SVG Gantt. Bryntum's npm package is private/licensed — swap in if a license is available.
-- Judge mode: `POST /api/auth/demo` → shared demo user + seeded Larkspur workspace (`DEMO_MODE=off` disables). Demo invoices go to `PAYER_EMAIL`. Seeded PRs are sample evidence without links; connect any public repo for real PRs.
+- Accounts: email+password (scrypt, `users.password_hash`, unique lower(email)) or GitHub OAuth; `users.role` = freelancer | client. `/app` requires freelancer, `/client` requires client. Same signed cookie session for both.
+- Clients across freelancers: `client_links` rows created only by opening a portal link while signed in as a client (token possession), never by email match. Freelancer's repeat client (same email) reuses one `clients` row.
+- Demo is opt-in: `POST /api/auth/demo` creates a private demo user per visitor + seeded Larkspur workspace; a signed-in real account is remembered in `pb_return` and restored by `POST /api/auth/demo/exit` (header Demo switch). Demo users deleted after `DEMO_TTL_DAYS` (default 3) by the worker tick. `DEMO_MODE=off` hides it. Demo invoices go to `PAYER_EMAIL`. Seeded PRs are sample evidence without links.
+- Skeleton loading: `loading.tsx` per route using `components/skeletons.tsx`.
 - No per-deploy identity config: freelancer display name = user's name (Settings page `/app/settings`, defaults to GitHub name).
 - Tests: `packages/services/test/flow.test.ts` drives the whole flow against a real Postgres (`TEST_DATABASE_URL`, schema dropped each run).
 - APIMatic Context Plugin (PayPal Server SDK, TS skills) vendored in `.claude/skills/` — loads in every session. Covers Orders/Payments/Vault/Subscriptions/Transaction Search via `@paypal/paypal-server-sdk`; **not Invoicing**. Load `typescript-getting-started` first when touching the Server SDK.

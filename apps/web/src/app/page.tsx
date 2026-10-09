@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { currentUser, githubOAuthConfigured } from "@/lib/session";
-import { paypalMode } from "@proofbill/services";
+import { currentUser, homeFor } from "@/lib/session";
+import { demoEnabled, paypalMode } from "@proofbill/services";
 import { aiEnabled } from "@proofbill/ai";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +16,13 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         </Link>
         <span className="spacer" />
         {user ? (
-          <Link href="/app" className="btn primary sm">Open workspace</Link>
-        ) : githubOAuthConfigured() ? (
-          <a href="/api/auth/github" className="btn sm">Sign in with GitHub</a>
-        ) : null}
+          <Link href={homeFor(user)} className="btn primary sm">Open {user.role === "client" ? "my portals" : "workspace"}</Link>
+        ) : (
+          <>
+            <Link href="/signin" className="btn sm ghost">Sign in</Link>
+            <Link href="/signup" className="btn sm primary">Get started</Link>
+          </>
+        )}
       </header>
       <main className="container">
         {error && <div className="form-msg error">{error}</div>}
@@ -33,13 +36,14 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               evidence portal, then sends a PayPal invoice computed straight from the contract.
             </p>
             <div className="row" style={{ marginTop: 28 }}>
-              <form action="/api/auth/demo" method="post">
-                <button className="btn primary lg">Try the demo workspace →</button>
-              </form>
-              {githubOAuthConfigured() && (
-                <a href="/api/auth/github" className="btn lg">Sign in with GitHub</a>
-              )}
+              <Link href="/signup" className="btn primary lg">I&apos;m a freelancer — get started</Link>
+              <Link href="/signup?role=client" className="btn lg">I&apos;m a client</Link>
             </div>
+            {demoEnabled() && (
+              <form action="/api/auth/demo" method="post" style={{ marginTop: 14 }}>
+                <button className="btn ghost sm">Just looking? Explore a sample workspace →</button>
+              </form>
+            )}
             <p className="muted" style={{ marginTop: 14, fontSize: 13 }}>
               ProofBill never holds your money. Clients pay you directly through PayPal; we just make sure the invoice proves the work.
             </p>

@@ -18,7 +18,7 @@ Unlike bounty tools (e.g. MergePay), ProofBill handles **client contracts** — 
 
 ## Try it
 
-**Hosted demo:** _add the Render URL here after deploy_ → **Try the demo workspace** (no sign-up; seeded Larkspur contract).
+**Hosted demo:** _add the Render URL here after deploy_ → sign up as a freelancer or client, or choose **Explore a sample workspace** (no sign-up; a private seeded Larkspur workspace per visitor).
 
 **Locally (≈2 minutes, no credentials needed):**
 
@@ -33,13 +33,13 @@ pnpm --filter web build && pnpm --filter web start   # http://localhost:3000
 pnpm --filter worker start                            # second terminal: evidence mapping + auto-accept
 ```
 
-Click **Try the demo workspace**. Without credentials, ProofBill runs in offline mode: a PayPal Invoicing simulator (same idempotency, duplicate and partial-payment rules, with its own payer page) and labelled heuristic extraction/mapping instead of Gemini. Add keys to use the real services:
+Sign up, or click **Explore a sample workspace**. Without credentials, ProofBill runs in offline mode: a PayPal Invoicing simulator (same idempotency, duplicate and partial-payment rules, with its own payer page) and labelled heuristic extraction/mapping instead of Gemini. Add keys to use the real services:
 
 | To enable | Set |
 |---|---|
 | PayPal sandbox | Tick **Invoicing** and **Transaction search** on the REST app. `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENV=sandbox`, `PAYER_EMAIL` (sandbox **Personal** account — demo invoices go there), `PAYPAL_WEBHOOK_ID` (webhook → `https://<host>/api/webhooks/paypal`, events `INVOICING.INVOICE.*`) |
 | Gemini | `GEMINI_API_KEY` (optional `GEMINI_MODEL`, default `gemini-flash-latest`) |
-| GitHub login | `GITHUB_OAUTH_CLIENT_ID/SECRET` (callback `https://<host>/api/auth/github/callback`) |
+| GitHub sign-in (optional; email + password always works) | `GITHUB_OAUTH_CLIENT_ID/SECRET` (callback `https://<host>/api/auth/github/callback`) |
 | GitHub webhooks | `GITHUB_WEBHOOK_SECRET` (payload URL `https://<host>/api/webhooks/github`, event *Pull requests*) |
 | Higher GitHub rate limit | `GITHUB_TOKEN` (read-only) |
 
@@ -67,7 +67,7 @@ Free instances sleep after about 15 minutes idle and take up to a minute to wake
 
 ### Judge walkthrough (sandbox)
 
-1. **Try the demo workspace** → *Invoice Export Platform* (Larkspur Labs, from [`sample-sow.md`](sample-sow.md)).
+1. **Explore a sample workspace** (or flip the **Demo** switch in the header) → *Invoice Export Platform* (Larkspur Labs, from [`sample-sow.md`](sample-sow.md)).
 2. **Evidence inbox:** PR #18 is proposed for Milestone 2 with confidence + rationale → *Confirm*.
 3. **Milestone 1** is already accepted by the client → *Build invoice* → review the code-computed $600 and AI-written lines → **Approve & send with PayPal**.
 4. Open the **payer link** in a private window, log in as the sandbox Personal account, pay **$150** (partial; minimum is 25%). The webhook flips the invoice to *Partially paid* in the ledger and on the timeline.
@@ -78,6 +78,12 @@ Free instances sleep after about 15 minutes idle and take up to a minute to wake
 `scripts/paypal-sandbox-check.sh` validates the raw Invoicing v2 loop (token → create → idempotent replay → mocked duplicate → send → partial pay → remind → paid) against your sandbox app.
 
 ---
+
+## Accounts
+
+- **Freelancers** sign up with email and password, or with GitHub. Each freelancer has their own contracts, clients and ledger. A repeat client (same email) reuses one client record.
+- **Clients** don't need an account: the portal link is enough to review evidence, accept, and pay through PayPal. With a free client account they can **save** each portal they receive and see every freelancer they work with in one dashboard (`/client`). A portal is saved by opening its link while signed in, which proves they received it; a matching email alone never grants access.
+- **Demo mode** is opt-in: *Explore a sample workspace* on the home page, or the **Demo** switch in the header. Each visitor gets a private sample workspace (deleted after 3 days); switching off returns to your real account. `DEMO_MODE=off` hides it entirely.
 
 ## Architecture
 

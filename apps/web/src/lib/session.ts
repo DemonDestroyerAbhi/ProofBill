@@ -50,9 +50,30 @@ export async function currentUser(): Promise<User | null> {
 
 export async function requireUser(): Promise<User> {
   const u = await currentUser();
-  if (!u) redirect("/?signin=1");
+  if (!u) redirect("/signin");
   return u;
 }
+
+/** Freelancer area (/app). Client accounts are sent to their own dashboard. */
+export async function requireFreelancer(): Promise<User> {
+  const u = await requireUser();
+  if (u.role === "client") redirect("/client");
+  return u;
+}
+
+export async function requireClient(): Promise<User> {
+  const u = await requireUser();
+  if (u.role !== "client") redirect("/app");
+  return u;
+}
+
+/** Where a signed-in user belongs. */
+export function homeFor(u: Pick<User, "role">): string {
+  return u.role === "client" ? "/client" : "/app";
+}
+
+/** Demo switch: remembers the real account while a visitor explores the sample workspace. */
+export const returnCookie = { name: "pb_return", options: sessionCookie.options };
 
 export function githubOAuthConfigured(): boolean {
   return !!(process.env.GITHUB_OAUTH_CLIENT_ID && process.env.GITHUB_OAUTH_CLIENT_SECRET);

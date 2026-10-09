@@ -1,6 +1,7 @@
 import { getDb, lt, or, isNull, repos, contracts, eq, and } from "@proofbill/db";
 import { mapPendingEvidence, pollRepo } from "./evidence";
 import { autoAcceptDue } from "./milestones";
+import { cleanupDemoUsers } from "./users";
 
 /** Worker tick: poll public repos, map new evidence, auto-accept past the acceptance window. */
 export async function workerTick(now = new Date(), opts: { pollEveryMs?: number } = {}) {
@@ -22,5 +23,6 @@ export async function workerTick(now = new Date(), opts: { pollEveryMs?: number 
   }
   const mapped = await mapPendingEvidence();
   const autoAccepted = await autoAcceptDue(now);
-  return { polled, mapped, autoAccepted, errors };
+  const demoCleaned = await cleanupDemoUsers(now);
+  return { polled, mapped, autoAccepted, demoCleaned, errors };
 }

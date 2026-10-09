@@ -8,7 +8,7 @@ import {
   buildInvoiceDraft,
   clientDecision,
   duplicateInvoiceProbe,
-  getOrCreateDemoUser,
+  createDemoUser,
   handlePayPalWebhook,
   invoicing,
   ledgerRows,
@@ -36,7 +36,7 @@ const ms = async () => getDb().select().from(milestones).where(eq(milestones.con
 const m = async (n: number) => (await ms()).find((x) => x.number === n)!;
 
 beforeAll(async () => {
-  userId = (await getOrCreateDemoUser()).id;
+  userId = (await createDemoUser()).id;
   contractId = await seedDemoWorkspace(userId, { reset: true, clientEmail: "client@example.com" });
 });
 afterAll(closeDb);

@@ -17,6 +17,7 @@ import {
   repos,
   timeEntries,
   inArray,
+  sql,
   users,
   type Contract,
 } from "@proofbill/db";
@@ -130,10 +131,14 @@ export async function confirmContract(userId: string, id: string, terms: Confirm
   const edited = ai ? diffFields(ai, terms) : [];
 
   await getDb().transaction(async (tx) => {
-    const [client] = await tx
-      .insert(clients)
-      .values({ userId, name: terms.clientName, email: terms.clientEmail, currency: terms.currency })
-      .returning();
+    // Same client across contracts → reuse their record (matched by email, per freelancer).
+    const [existingClient] = await tx
+      .select()
+      .from(clients)
+      .where(and(eq(clients.userId, userId), sql`lower(${clients.email}) = ${terms.clientEmail.trim().toLowerCase()}`));
+    const [client] = existingClient
+      ? await tx.update(clients).set({ name: terms.clientName, currency: terms.currency }).where(eq(clients.id, existingClient.id)).returning()
+      : await tx.insert(clients).values({ userId, name: terms.clientName, email: terms.clientEmail.trim(), currency: terms.currency }).returning();
     const extracted = c.extracted as ExtractedTerms | null;
     await tx
       .update(contracts)

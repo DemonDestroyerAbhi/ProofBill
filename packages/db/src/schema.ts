@@ -42,16 +42,26 @@ export interface SourceRefJson {
   quote: string;
 }
 
-export const users = pgTable("users", {
-  id: id(),
-  githubId: text("github_id").unique(),
-  login: text("login").notNull(),
-  name: text("name"),
-  email: text("email"),
-  avatarUrl: text("avatar_url"),
-  isDemo: boolean("is_demo").notNull().default(false),
-  createdAt: createdAt(),
-});
+export const userRole = pgEnum("user_role", ["freelancer", "client"]);
+
+export const users = pgTable(
+  "users",
+  {
+    id: id(),
+    githubId: text("github_id").unique(),
+    login: text("login").notNull(),
+    name: text("name"),
+    email: text("email"),
+    /** scrypt hash for email/password accounts; null for GitHub-only and demo users. */
+    passwordHash: text("password_hash"),
+    role: userRole("role").notNull().default("freelancer"),
+    avatarUrl: text("avatar_url"),
+    isDemo: boolean("is_demo").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  // One password account per email (case-insensitive).
+  (t) => [uniqueIndex("users_password_email_uq").on(sql`lower(${t.email})`).where(sql`password_hash IS NOT NULL`)],
+);
 
 export const clients = pgTable("clients", {
   id: id(),
@@ -255,6 +265,21 @@ export const invoicePayments = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("invoice_payments_txn_uq").on(t.invoiceId, t.transactionId)],
+);
+
+/**
+ * A client account's saved portals, across freelancers. A row is created only when the signed-in
+ * client opens the contract's portal link — possession of the link is the proof, not the email.
+ */
+export const clientLinks = pgTable(
+  "client_links",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    contractId: uuid("contract_id").notNull().references(() => contracts.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("client_links_user_contract_uq").on(t.userId, t.contractId)],
 );
 
 export const auditEvents = pgTable(

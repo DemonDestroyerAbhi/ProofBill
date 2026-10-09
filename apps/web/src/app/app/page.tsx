@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { listContracts } from "@proofbill/services";
-import { requireUser } from "@/lib/session";
+import { requireFreelancer } from "@/lib/session";
 import { money } from "@/lib/format";
 import { Badge } from "@/components/ui";
 
 export default async function Dashboard() {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const rows = await listContracts(user.id);
   const totals = rows.reduce(
     (a, r) => ({ invoiced: a.invoiced + r.invoicedCents, paid: a.paid + r.paidCents, waiting: a.waiting + r.awaitingClient }),

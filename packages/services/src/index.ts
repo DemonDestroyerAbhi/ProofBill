@@ -3,6 +3,7 @@ export * from "./audit";
 export * from "./paypal";
 export * from "./docs";
 export * from "./users";
+export * from "./clients";
 export * from "./contracts";
 export * from "./github";
 export * from "./evidence";

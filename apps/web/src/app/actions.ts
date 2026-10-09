@@ -33,13 +33,13 @@ import {
   updateDisplayName,
 } from "@proofbill/services";
 import { getDb, invoices, eq, repos } from "@proofbill/db";
-import { requireUser } from "@/lib/session";
+import { requireFreelancer } from "@/lib/session";
 import { attempt, type ActionState } from "@/lib/actions";
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 export async function uploadContractAction(_: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   let id = "";
   const r = await attempt(async () => {
     const file = f.get("file");
@@ -58,7 +58,7 @@ export async function uploadContractAction(_: ActionState, f: FormData): Promise
 }
 
 export async function confirmTermsAction(contractId: string, terms: ConfirmedTerms): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     const { issues } = await confirmContract(user.id, contractId, terms);
     const errs = issues.filter((i) => i.level === "error");
@@ -69,13 +69,13 @@ export async function confirmTermsAction(contractId: string, terms: ConfirmedTer
 }
 
 export async function deleteDraftAction(contractId: string): Promise<void> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   await deleteDraft(user.id, contractId);
   redirect("/app");
 }
 
 export async function reviewEvidenceAction(contractId: string, _: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     const action = s(f, "action");
     const id = s(f, "evidenceId");
@@ -88,7 +88,7 @@ export async function reviewEvidenceAction(contractId: string, _: ActionState, f
 }
 
 export async function addRepoAction(contractId: string, _: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await addRepo(user.id, contractId, s(f, "repo"));
     const [repo] = await getDb().select().from(repos).where(eq(repos.contractId, contractId));
@@ -103,7 +103,7 @@ export async function addRepoAction(contractId: string, _: ActionState, f: FormD
 }
 
 export async function pollReposAction(contractId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await getContract(user.id, contractId);
     const all = await getDb().select().from(repos).where(eq(repos.contractId, contractId));
@@ -117,7 +117,7 @@ export async function pollReposAction(contractId: string, _: ActionState): Promi
 }
 
 export async function addManualEvidenceAction(contractId: string, _: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     const milestoneId = s(f, "milestoneId") || null;
     const file = f.get("file");
@@ -141,7 +141,7 @@ export async function addManualEvidenceAction(contractId: string, _: ActionState
 }
 
 export async function submitMilestoneAction(contractId: string, milestoneId: string, _: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await submitMilestone(user.id, milestoneId, s(f, "note") || null);
     return "Submitted — the client has been given the evidence portal link.";
@@ -151,20 +151,20 @@ export async function submitMilestoneAction(contractId: string, milestoneId: str
 }
 
 export async function addTimeAction(contractId: string, milestoneId: string, _: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(() => addTimeEntry(user.id, milestoneId, { date: s(f, "date"), hours: Number(s(f, "hours")), note: s(f, "note") }));
   revalidatePath(`/app/contracts/${contractId}`);
   return r;
 }
 
 export async function deleteTimeAction(contractId: string, entryId: string): Promise<void> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   await deleteTimeEntry(user.id, entryId);
   revalidatePath(`/app/contracts/${contractId}`);
 }
 
 export async function buildInvoiceAction(milestoneId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   let id = "";
   const r = await attempt(async () => {
     id = (await buildInvoiceDraft(user.id, milestoneId)).id;
@@ -174,7 +174,7 @@ export async function buildInvoiceAction(milestoneId: string, _: ActionState): P
 }
 
 export async function saveDraftAction(invoiceId: string, _: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     const lines = [...f.keys()].filter((k) => k.startsWith("line:")).map((k) => ({ id: k.slice(5), description: s(f, k) }));
     await updateDraftText(user.id, invoiceId, { note: s(f, "note"), lines });
@@ -185,7 +185,7 @@ export async function saveDraftAction(invoiceId: string, _: ActionState, f: Form
 }
 
 export async function sendInvoiceAction(invoiceId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await approveAndSend(user.id, invoiceId);
     return "Sent via PayPal";
@@ -195,7 +195,7 @@ export async function sendInvoiceAction(invoiceId: string, _: ActionState): Prom
 }
 
 export async function discardDraftAction(invoiceId: string, contractId: string): Promise<void> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   await discardDraft(user.id, invoiceId);
   redirect(`/app/contracts/${contractId}`);
 }
@@ -208,7 +208,7 @@ async function ownInvoice(userId: string, invoiceId: string) {
 }
 
 export async function remindAction(invoiceId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await ownInvoice(user.id, invoiceId);
     const rem = await sendReminder(invoiceId, "user");
@@ -219,7 +219,7 @@ export async function remindAction(invoiceId: string, _: ActionState): Promise<A
 }
 
 export async function refreshInvoiceAction(invoiceId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await ownInvoice(user.id, invoiceId);
     const inv = await syncInvoiceFromPayPal(invoiceId, "manual refresh");
@@ -230,7 +230,7 @@ export async function refreshInvoiceAction(invoiceId: string, _: ActionState): P
 }
 
 export async function reconcileAction(invoiceId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await ownInvoice(user.id, invoiceId);
     const res = await reconcileInvoice(invoiceId);
@@ -243,7 +243,7 @@ export async function reconcileAction(invoiceId: string, _: ActionState): Promis
 }
 
 export async function cancelInvoiceAction(invoiceId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await cancelInvoice(user.id, invoiceId);
     return "Cancelled on PayPal";
@@ -253,7 +253,7 @@ export async function cancelInvoiceAction(invoiceId: string, _: ActionState): Pr
 }
 
 export async function duplicateProbeAction(invoiceId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     const p = await duplicateInvoiceProbe(user.id, invoiceId);
     if (p.status === 422) return `Blocked ✓ PayPal answered ${p.status} ${p.issue}`;
@@ -264,7 +264,7 @@ export async function duplicateProbeAction(invoiceId: string, _: ActionState): P
 }
 
 export async function capProbeAction(contractId: string, _: ActionState): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     const p = await probeOverCap(user.id, contractId);
     if (!p.blocked) throw new Error(p.message);
@@ -275,7 +275,7 @@ export async function capProbeAction(contractId: string, _: ActionState): Promis
 }
 
 export async function updateProfileAction(_: ActionState, f: FormData): Promise<ActionState> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const r = await attempt(async () => {
     await updateDisplayName(user.id, s(f, "name"));
     return "Saved";
@@ -285,7 +285,7 @@ export async function updateProfileAction(_: ActionState, f: FormData): Promise<
 }
 
 export async function resetDemoAction(): Promise<void> {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   if (!user.isDemo) throw new Error("Only the demo workspace can be reset");
   await seedDemoWorkspace(user.id, { reset: true });
   redirect("/app");

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq, evidence as evidenceT, getDb, inArray, invoiceLines, invoicePayments, invoices, milestones, auditEvents, desc, clients } from "@proofbill/db";
 import { getContract, NotFoundError, paypalMode, portalUrl } from "@proofbill/services";
-import { requireUser } from "@/lib/session";
+import { requireFreelancer } from "@/lib/session";
 import { date, dateTime, money } from "@/lib/format";
 import { ActionForm, Submit } from "@/components/action-form";
 import { ActorTag, Badge, Card, EvidenceIcon, EvidenceLink } from "@/components/ui";
@@ -19,7 +19,7 @@ import {
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const db = getDb();
   const [inv] = await db.select().from(invoices).where(eq(invoices.id, id));
   if (!inv) notFound();

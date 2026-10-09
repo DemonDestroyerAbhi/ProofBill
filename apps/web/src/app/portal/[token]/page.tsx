@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { contractByPortalToken, loadContractBundle, freelancerDisplayName } from "@proofbill/services";
+import { contractByPortalToken, loadContractBundle, freelancerDisplayName, isPortalLinked } from "@proofbill/services";
+import Link from "next/link";
+import { currentUser } from "@/lib/session";
+import { savePortalAction } from "../../client-actions";
 import { date, dateTime, money } from "@/lib/format";
 import { ActionForm, Submit } from "@/components/action-form";
 import { Badge, EvidenceIcon, EvidenceLink } from "@/components/ui";
@@ -20,6 +23,8 @@ export default async function Portal({ params }: { params: Promise<{ token: stri
   const { contract: c, client, milestones, evidence, invoices } = await loadContractBundle(c0.id);
   const confirmed = evidence.filter((e) => e.status === "confirmed");
   const who = await freelancerDisplayName(c);
+  const viewer = await currentUser();
+  const saved = viewer?.role === "client" ? await isPortalLinked(viewer.id, token) : false;
   const pending = milestones.filter((m) => m.status === "submitted");
 
   return (
@@ -27,6 +32,20 @@ export default async function Portal({ params }: { params: Promise<{ token: stri
       <header className="topbar">
         <span className="brand"><span className="brand-mark">✓</span> ProofBill</span>
         <span className="muted" style={{ fontSize: 14 }}>Evidence portal</span>
+        <span className="spacer" />
+        {viewer?.role === "client" ? (
+          saved ? (
+            <Link href="/client" className="btn sm">✓ Saved · All my portals</Link>
+          ) : (
+            <ActionForm action={savePortalAction.bind(null, token)} className="row">
+              <Submit className="btn sm primary" pendingText="Saving…">Save to my account</Submit>
+            </ActionForm>
+          )
+        ) : !viewer ? (
+          <Link href={`/signin?next=${encodeURIComponent(`/portal/${token}`)}`} className="btn sm ghost" title="Keep every freelancer's portal in one place">
+            Client sign-in
+          </Link>
+        ) : null}
       </header>
       <main className="container narrow stack-lg">
         <div className="stack-sm">

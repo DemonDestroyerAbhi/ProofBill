@@ -1,12 +1,12 @@
 import { ledgerRows } from "@proofbill/services";
 import { aiEnabled } from "@proofbill/ai";
-import { requireUser } from "@/lib/session";
+import { requireFreelancer } from "@/lib/session";
 import { money } from "@/lib/format";
 import { LedgerGrid } from "@/components/ledger-grid";
 import { LedgerAssistant } from "@/components/ledger-assistant";
 
 export default async function LedgerPage() {
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const rows = await ledgerRows(user.id);
   const byInvoice = new Map(rows.map((r) => [r.invoiceId, r]));
   const invs = [...byInvoice.values()].filter((r) => r.status !== "CANCELLED" && r.status !== "draft");

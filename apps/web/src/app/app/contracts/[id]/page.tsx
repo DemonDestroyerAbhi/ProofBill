@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ExtractedTerms } from "@proofbill/core";
 import { getContract, loadContractBundle, NotFoundError, portalUrl } from "@proofbill/services";
 import type { Evidence, Milestone } from "@proofbill/db";
-import { requireUser } from "@/lib/session";
+import { requireFreelancer } from "@/lib/session";
 import { date, dateTime, money } from "@/lib/format";
 import { ActionForm, Submit } from "@/components/action-form";
 import { ActorTag, Badge, Card, Confidence, EvidenceIcon, EvidenceLink, Source } from "@/components/ui";
@@ -23,7 +23,7 @@ import {
 
 export default async function ContractPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const c0 = await getContract(user.id, id).catch((e) => (e instanceof NotFoundError ? null : Promise.reject(e)));
   if (!c0) notFound();
   if (c0.status === "draft") redirect(`/app/contracts/${id}/review`);

@@ -1,13 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import type { ExtractedTerms } from "@proofbill/core";
 import { extractedToConfirmed, getContract, NotFoundError } from "@proofbill/services";
-import { requireUser } from "@/lib/session";
+import { requireFreelancer } from "@/lib/session";
 import { TermsReview } from "@/components/terms-review";
 import { deleteDraftAction } from "../../../../actions";
 
 export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireUser();
+  const user = await requireFreelancer();
   const c = await getContract(user.id, id).catch((e) => (e instanceof NotFoundError ? null : Promise.reject(e)));
   if (!c) notFound();
   if (c.status !== "draft") redirect(`/app/contracts/${id}`);

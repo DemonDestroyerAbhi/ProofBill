@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { appUrl, upsertGithubUser } from "@proofbill/services";
-import { encodeSession, sessionCookie } from "@/lib/session";
+import { encodeSession, homeFor, returnCookie, sessionCookie } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
   if (!gh?.id) return fail("Could not read your GitHub profile");
 
   const user = await upsertGithubUser(gh);
-  const res = NextResponse.redirect(`${appUrl()}/app`);
+  const res = NextResponse.redirect(`${appUrl()}${homeFor(user)}`);
+  res.cookies.delete(returnCookie.name);
   res.cookies.set(sessionCookie.name, encodeSession(user.id), sessionCookie.options);
   res.cookies.delete("pb_oauth_state");
   return res;
