@@ -1,4 +1,4 @@
-import { contracts, eq, getDb, milestones } from "@proofbill/db";
+import { contracts, eq, getDb, milestones, users } from "@proofbill/db";
 import { audit } from "./audit";
 import { confirmContract, createDraftFromText, extractedToConfirmed } from "./contracts";
 import { addEvidence, mapPendingEvidence, reviewEvidence } from "./evidence";
@@ -14,11 +14,16 @@ export { SAMPLE_SOW };
  *  M2 in progress, one PR awaiting the freelancer's confirmation of the AI mapping + a design link
  *  M3 planned (depends on M2) · M4 change requests with logged hours
  */
-export async function seedDemoWorkspace(userId: string, opts: { reset?: boolean; repo?: string; clientEmail?: string } = {}): Promise<string> {
+export async function seedDemoWorkspace(userId: string, opts: { reset?: boolean; clientEmail?: string } = {}): Promise<string> {
   const db = getDb();
   if (opts.reset) await db.delete(contracts).where(eq(contracts.userId, userId));
-  const repo = opts.repo ?? process.env.DEMO_REPO ?? "DemonDestroyerAbhi/larkspur-invoice-export";
-  const sow = SAMPLE_SOW.replace("[your-github]/larkspur-invoice-export", repo).replace("[Your Name]", process.env.FREELANCER_NAME ?? "Demo Freelancer");
+  const [owner] = await db.select().from(users).where(eq(users.id, userId));
+  // Sample PRs are illustrative (no links). Connect any public repo on the contract page for real ones.
+  const repo = "sample/larkspur-invoice-export";
+  const sow = SAMPLE_SOW.replace("[your-github]/larkspur-invoice-export", "larkspur-invoice-export").replace(
+    "[Your Name]",
+    owner?.name || owner?.login || "Demo Freelancer",
+  );
 
   const draft = await createDraftFromText(userId, { name: "larkspur-sow.md", text: sow });
   const terms = extractedToConfirmed(draft.extracted as ExtractedTerms);
@@ -33,10 +38,10 @@ export async function seedDemoWorkspace(userId: string, opts: { reset?: boolean;
   const pr = (n: number, title: string, files: string[], body: string, daysAgo: number) => ({
     type: "github_pr" as const,
     ref: `${repo}#${n}`,
-    url: `https://github.com/${repo}/pull/${n}`,
+    url: null,
     title: `PR #${n}: ${title}`,
     capturedAt: new Date(t0 + (6 - daysAgo) * 86_400_000),
-    meta: { repo, number: n, body, files, labels: [], seeded: true },
+    meta: { repo, number: n, body, files, labels: [], sample: true },
   });
 
   await addEvidence(draft.id, pr(12, "Email/password signup and login", ["src/auth/signup.ts", "src/auth/login.ts", "test/auth.test.ts"], "Adds signup + login with bcrypt hashing. Tests passing.", 5));
@@ -44,7 +49,7 @@ export async function seedDemoWorkspace(userId: string, opts: { reset?: boolean;
   await addEvidence(draft.id, pr(18, "CSV export endpoint for invoices", ["src/api/export/csv.ts", "test/export.csv.test.ts"], "GET /api/invoices/export.csv streams invoices as CSV.", 1));
   await addEvidence(
     draft.id,
-    { type: "link", ref: "figma:export-dialog", url: "https://www.figma.com/", title: "Figma: PDF export layout (approved by Larkspur design)", meta: { note: "Layout for the PDF invoice export" } },
+    { type: "link", ref: "figma:export-dialog", url: null, title: "Figma: PDF export layout (approved by Larkspur design)", meta: { note: "Layout for the PDF invoice export", sample: true } },
     "user",
   );
   await mapPendingEvidence(draft.id);

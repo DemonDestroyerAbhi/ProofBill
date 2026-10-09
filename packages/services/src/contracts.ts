@@ -250,9 +250,8 @@ export async function contractByPortalToken(token: string): Promise<Contract | n
   return c && c.status !== "draft" ? c : null;
 }
 
-/** Name shown to the client (portal, reminders): FREELANCER_NAME override, else the owner's GitHub name/login. */
+/** Name shown to the client (portal, reminders): the owner's display name (Settings), else their GitHub login. */
 export async function freelancerDisplayName(contract: Pick<Contract, "userId">): Promise<string> {
-  if (process.env.FREELANCER_NAME) return process.env.FREELANCER_NAME;
   const [u] = await getDb().select().from(users).where(eq(users.id, contract.userId));
   return u?.name || u?.login || "Your freelancer";
 }

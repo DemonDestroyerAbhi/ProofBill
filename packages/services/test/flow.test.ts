@@ -26,6 +26,8 @@ import {
   confirmContract,
   extractedToConfirmed,
   reconcileInvoice,
+  updateDisplayName,
+  freelancerDisplayName,
 } from "../src";
 
 let userId: string;
@@ -256,6 +258,23 @@ describe("audit log", () => {
       expect(actions, k).toContain(k);
     }
     expect(a.filter((x) => x.action === "evidence_mapped").every((x) => x.rationale)).toBe(true);
+  });
+});
+
+describe("freelancer identity", () => {
+  it("comes from the user's display name, not deploy config", async () => {
+    const [c] = await getDb().select().from(contracts).where(eq(contracts.id, contractId));
+    expect(await freelancerDisplayName(c!)).toBe("Demo Freelancer");
+    await updateDisplayName(userId, "  Abhishek S  ");
+    expect(await freelancerDisplayName(c!)).toBe("Abhishek S");
+    await expect(updateDisplayName(userId, " ")).rejects.toThrow(/at least 2/);
+    await updateDisplayName(userId, "Demo Freelancer");
+  });
+  it("seeded sample evidence has no fake links", async () => {
+    const ev = await getDb().select().from(evidence).where(eq(evidence.contractId, contractId));
+    const sample = ev.filter((e) => (e.meta as { sample?: boolean }).sample);
+    expect(sample.length).toBe(4);
+    expect(sample.every((e) => e.url === null)).toBe(true);
   });
 });
 

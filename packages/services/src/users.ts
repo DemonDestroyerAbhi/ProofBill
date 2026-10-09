@@ -26,6 +26,12 @@ export async function getOrCreateDemoUser(): Promise<User> {
   return u ?? (await db.select().from(users).where(eq(users.githubId, "demo")))[0]!;
 }
 
+export async function updateDisplayName(userId: string, name: string): Promise<void> {
+  const clean = name.trim().slice(0, 80);
+  if (clean.length < 2) throw new Error("Name must be at least 2 characters");
+  await getDb().update(users).set({ name: clean }).where(eq(users.id, userId));
+}
+
 export async function getUser(id: string): Promise<User | null> {
   const [u] = await getDb().select().from(users).where(eq(users.id, id));
   return u ?? null;

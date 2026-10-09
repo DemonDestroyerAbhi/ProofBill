@@ -30,6 +30,7 @@ import {
   updateDraftText,
   seedDemoWorkspace,
   reconcileInvoice,
+  updateDisplayName,
 } from "@proofbill/services";
 import { getDb, invoices, eq, repos } from "@proofbill/db";
 import { requireUser } from "@/lib/session";
@@ -270,6 +271,16 @@ export async function capProbeAction(contractId: string, _: ActionState): Promis
     return `Blocked ✓ ${p.message}`;
   });
   revalidatePath(`/app/contracts/${contractId}`);
+  return r;
+}
+
+export async function updateProfileAction(_: ActionState, f: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const r = await attempt(async () => {
+    await updateDisplayName(user.id, s(f, "name"));
+    return "Saved";
+  });
+  revalidatePath("/app", "layout");
   return r;
 }
 

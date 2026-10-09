@@ -19,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/app">Contracts</Link>
           <Link href="/app/ledger">Ledger</Link>
           <Link href="/app/contracts/new">New contract</Link>
+          <Link href="/app/settings">Settings</Link>
         </nav>
         <span className="spacer" />
         <span className="chip" title="PayPal Invoicing environment">PayPal: {mode}</span>

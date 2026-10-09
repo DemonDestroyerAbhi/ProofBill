@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { contractByPortalToken, loadContractBundle, freelancerDisplayName } from "@proofbill/services";
 import { date, dateTime, money } from "@/lib/format";
 import { ActionForm, Submit } from "@/components/action-form";
-import { Badge, EvidenceIcon } from "@/components/ui";
+import { Badge, EvidenceIcon, EvidenceLink } from "@/components/ui";
 import { clientDecisionAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export default async function Portal({ params }: { params: Promise<{ token: stri
                           {proof.length > 0 && (
                             <div className="row" style={{ gap: 6, paddingLeft: 26 }}>
                               {proof.map((p) => (
-                                <a key={p.id} href={p.url ?? "#"} target="_blank" rel="noreferrer" className="chip">{p.title.split(":")[0]}</a>
+                                <EvidenceLink key={p.id} url={p.url} title={p.title.split(":")[0]!} className="chip" />
                               ))}
                             </div>
                           )}
@@ -85,7 +85,7 @@ export default async function Portal({ params }: { params: Promise<{ token: stri
                       <div key={e.id} className="evidence-item">
                         <EvidenceIcon type={e.type} />
                         <div className="stack-sm" style={{ gap: 2 }}>
-                          <a className="link" href={e.type === "file" && e.url ? `${e.url}?t=${token}` : e.url ?? "#"} target="_blank" rel="noreferrer">{e.title}</a>
+                          <EvidenceLink url={e.type === "file" && e.url ? `${e.url}?t=${token}` : e.url} title={e.title} sample={Boolean((e.meta as { sample?: boolean } | null)?.sample)} />
                           <small className="muted">{e.aiSummary ?? e.type.replace("_", " ")} · {dateTime(e.capturedAt)}</small>
                         </div>
                       </div>

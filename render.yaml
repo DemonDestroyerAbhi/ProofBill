@@ -20,10 +20,6 @@ envVarGroups:
         sync: false
       - key: APP_URL # public URL of proofbill-web, e.g. https://proofbill-web.onrender.com
         sync: false
-      - key: FREELANCER_NAME
-        sync: false
-      - key: DEMO_REPO
-        sync: false
       - key: SESSION_SECRET
         generateValue: true
 

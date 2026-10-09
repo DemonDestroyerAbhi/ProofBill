@@ -6,7 +6,7 @@ import type { Evidence, Milestone } from "@proofbill/db";
 import { requireUser } from "@/lib/session";
 import { date, dateTime, money } from "@/lib/format";
 import { ActionForm, Submit } from "@/components/action-form";
-import { ActorTag, Badge, Card, Confidence, EvidenceIcon, Source } from "@/components/ui";
+import { ActorTag, Badge, Card, Confidence, EvidenceIcon, EvidenceLink, Source } from "@/components/ui";
 import { Gantt } from "@/components/gantt";
 import { CopyButton } from "@/components/copy-button";
 import {
@@ -82,7 +82,7 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
                   <EvidenceIcon type={e.type} />
                   <div className="stack-sm" style={{ flex: 1, gap: 4 }}>
                     <div className="row-between">
-                      <a href={e.url ?? "#"} target="_blank" rel="noreferrer" className="link"><strong>{e.title}</strong></a>
+                      <EvidenceLink url={e.url} title={e.title} sample={Boolean((e.meta as { sample?: boolean } | null)?.sample)}><strong>{e.title}</strong></EvidenceLink>
                       <small>{dateTime(e.capturedAt)}</small>
                     </div>
                     {e.mappedAt ? (
@@ -323,7 +323,7 @@ function MilestoneCard({
               <div key={e.id} className="row" style={{ gap: 8, alignItems: "flex-start" }}>
                 <EvidenceIcon type={e.type} />
                 <div className="stack-sm" style={{ gap: 0 }}>
-                  <a className="link" href={e.url ?? "#"} target="_blank" rel="noreferrer">{e.title}</a>
+                  <EvidenceLink url={e.url} title={e.title} sample={Boolean((e.meta as { sample?: boolean } | null)?.sample)} />
                   {e.aiRationale && <small className="muted">{e.aiRationale}</small>}
                 </div>
               </div>

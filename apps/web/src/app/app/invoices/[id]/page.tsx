@@ -5,7 +5,7 @@ import { getContract, NotFoundError, paypalMode, portalUrl } from "@proofbill/se
 import { requireUser } from "@/lib/session";
 import { date, dateTime, money } from "@/lib/format";
 import { ActionForm, Submit } from "@/components/action-form";
-import { ActorTag, Badge, Card, EvidenceIcon } from "@/components/ui";
+import { ActorTag, Badge, Card, EvidenceIcon, EvidenceLink } from "@/components/ui";
 import {
   cancelInvoiceAction,
   reconcileAction,
@@ -114,7 +114,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <div key={e.id} className="evidence-item">
               <EvidenceIcon type={e.type} />
               <div className="stack-sm" style={{ gap: 2 }}>
-                <a className="link" href={e.url ?? "#"} target="_blank" rel="noreferrer">{e.title}</a>
+                <EvidenceLink url={e.url} title={e.title} sample={Boolean((e.meta as { sample?: boolean } | null)?.sample)} />
                 {e.aiSummary && <small className="muted">{e.aiSummary}</small>}
               </div>
             </div>

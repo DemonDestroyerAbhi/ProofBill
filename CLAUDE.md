@@ -243,7 +243,8 @@ Next:
 - One live invoice per milestone (partial unique index). Hourly milestone = one invoice; more hours later → add another hourly milestone.
 - Late fees: separate invoice `…-LF<n>` per full 30 days overdue, simple interest on outstanding balance, excluded from cap.
 - Timeline is an SVG Gantt (Bryntum fallback). Bryntum's npm package is private/licensed — swap in if the license is confirmed.
-- Judge mode: `POST /api/auth/demo` → shared demo user + seeded Larkspur workspace (`DEMO_MODE=off` disables). Demo invoices go to `PAYER_EMAIL`.
+- Judge mode: `POST /api/auth/demo` → shared demo user + seeded Larkspur workspace (`DEMO_MODE=off` disables). Demo invoices go to `PAYER_EMAIL`. Seeded PRs are sample evidence without links; connect any public repo for real PRs.
+- No per-deploy identity config: freelancer display name = user's name (Settings page `/app/settings`, defaults to GitHub name).
 - Tests: `packages/services/test/flow.test.ts` drives the whole flow against a real Postgres (`TEST_DATABASE_URL`, schema dropped each run).
 - APIMatic Context Plugin (PayPal Server SDK, TS skills) vendored in `.claude/skills/` — loads in every session. Covers Orders/Payments/Vault/Subscriptions/Transaction Search via `@paypal/paypal-server-sdk`; **not Invoicing**. Load `typescript-getting-started` first when touching the Server SDK.
 - Reconciliation: `packages/paypal/src/transactions.ts` uses `@paypal/paypal-server-sdk@2.5.0` (pinned) `TransactionSearchController` → `invoice_payments` + `invoices.fee_cents/net_cents/reconcile_status`. Runs after a payment webhook (best-effort), in the collections cron, and from the invoice page. Needs **Transaction search** permission on the PayPal app. Mock mode simulates fees at 3.49% + $0.49.

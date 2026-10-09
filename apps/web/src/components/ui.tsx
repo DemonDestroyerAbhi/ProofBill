@@ -51,3 +51,32 @@ export function EvidenceIcon({ type }: { type: string }) {
 export function ActorTag({ actor }: { actor: string }) {
   return <span className={`actor ${actor}`}>{actor === "ai" ? "AI" : actor}</span>;
 }
+
+/** Evidence title as a link when it has a URL; plain text (marked "sample" for seeded demo data) otherwise. */
+export function EvidenceLink({
+  url,
+  title,
+  className = "link",
+  sample,
+  children,
+}: {
+  url: string | null | undefined;
+  title: string;
+  className?: string;
+  sample?: boolean;
+  children?: ReactNode;
+}) {
+  const body = children ?? title;
+  if (!url)
+    return (
+      <span className={className === "link" ? undefined : className}>
+        {body}
+        {sample && <span className="chip" style={{ marginLeft: 6 }}>sample</span>}
+      </span>
+    );
+  return (
+    <a className={className} href={url} target="_blank" rel="noreferrer">
+      {body}
+    </a>
+  );
+}
