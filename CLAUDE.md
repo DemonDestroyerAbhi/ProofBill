@@ -249,3 +249,16 @@ Next:
 - Reconciliation: `packages/paypal/src/transactions.ts` uses `@paypal/paypal-server-sdk@2.5.0` (pinned) `TransactionSearchController` → `invoice_payments` + `invoices.fee_cents/net_cents/reconcile_status`. Runs after a payment webhook (best-effort), in the collections cron, and from the invoice page. Needs **Transaction search** permission on the PayPal app. Mock mode simulates fees at 3.49% + $0.49.
 - PayPal webhooks: dedupe skips only *processed* events — PayPal retries non-2xx up to 25× over 3 days, so an unverified/errored delivery is reprocessed on retry. Unverified → 401 (PayPal retries).
 - Sandbox (kickoff session): app feature toggles (Transaction search etc.) take up to ~10 min to apply; webhook is per app per environment (recreate for live); local webhook testing needs a tunnel (ngrok / cloudflared) to :3000; debug via Developer Dashboard → Event logs (API calls, errors, webhook deliveries + resend) and Sandbox notifications.
+
+## 15. Planned (after sandbox run): PayPal MCP in "Ask the ledger"
+
+Goal (Best Use of PayPal + AI): Gemini reasons; PayPal's own MCP server supplies live PayPal data. Read-only.
+- **Server:** `https://mcp.sandbox.paypal.com/sse` (SSE), header `Authorization: Bearer <access token>` (from `paypal/ai-toolkit` `.mcp.json`). Env `PAYPAL_MCP_URL` (default sandbox).
+- **Token:** reuse `PayPalRestClient.accessToken()` (client-credentials, auto-refresh) → no 9h manual refresh.
+- **Client:** `packages/paypal/src/mcp.ts` with `@modelcontextprotocol/sdk` `Client` + `SSEClientTransport`; `tools/list` at connect (exact tool names unknown until then — invoice tools are "7 invoice tools", reporting has `list_transactions`).
+- **Guardrail:** allowlist read-only tools only (list/get/search: invoices, transactions, disputes). Never expose create/send/pay/cancel/refund tools — sending stays behind human-approved UI.
+- **Assistant:** merge allowlisted MCP tools into Gemini `functionDeclarations` (MCP `inputSchema` → `parametersJsonSchema`, prefix `paypal_`), dispatch via `callTool`; keep our DB tools (`list_receivables`, `list_milestones`). UI trace shows "via PayPal MCP".
+- **Fallback:** mock mode, connect failure or 401 → current REST/Server-SDK tools. Log which path answered.
+- **Tests:** in-memory MCP server (SDK `InMemoryTransport`) to test allowlist filtering + dispatch + fallback.
+- **Risks:** SSE transport is legacy in the MCP spec (SDK still supports it); tool names/schemas may change; sandbox MCP `create_invoice` bug irrelevant (read-only).
+- Est. ~half a day.
