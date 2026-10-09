@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# ProofBill — Week 0: validate PayPal Invoicing v2 end-to-end in sandbox.
-# Usage: cp .env.example .env  # fill PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYER_EMAIL
-#        chmod +x week0-paypal-check.sh && ./week0-paypal-check.sh
+# ProofBill — validate PayPal Invoicing v2 end-to-end in sandbox (independent of the app).
+# Usage (from the repo root): cp .env.example .env  # fill PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYER_EMAIL
+#        ./scripts/paypal-sandbox-check.sh
 set -euo pipefail
 [ -f .env ] && set -a && . ./.env && set +a
 : "${PAYPAL_CLIENT_ID:?set in .env}" "${PAYPAL_CLIENT_SECRET:?set in .env}" "${PAYER_EMAIL:?sandbox PERSONAL account email}"
@@ -22,8 +22,8 @@ TOKEN=$(curl -s -u "$PAYPAL_CLIENT_ID:$PAYPAL_CLIENT_SECRET" -d grant_type=clien
 [ -n "$TOKEN" ] && ok "token" || die "token — check client id/secret and that the app is a SANDBOX app"
 
 echo "── 2. Create draft invoice (partial payments on, Net-15)"
-INV_NO="PB-W0-$(date +%Y%m%d%H%M%S)"
-REQ_ID="pb-w0-$(date +%s)"
+INV_NO="PB-CHECK-$(date +%Y%m%d%H%M%S)"
+REQ_ID="pb-check-$(date +%s)"
 INVOICE=$(jq -n --arg no "$INV_NO" --arg payer "$PAYER_EMAIL" '{
   detail: { invoice_number: $no, currency_code: "USD",
             note: "Milestone 1 — Authentication module. Evidence: PR #12, PR #15.",

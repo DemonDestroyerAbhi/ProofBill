@@ -12,7 +12,6 @@ import {
   isPaidStatus,
   isReminderDue,
   lateFeeInvoiceNumber,
-  minimumPaymentCents,
   netTermType,
   parseDate,
   paypalRequestId,
@@ -613,4 +612,3 @@ export async function probeOverCap(userId: string, contractId: string): Promise<
   }
 }
 
-export { minimumPaymentCents };

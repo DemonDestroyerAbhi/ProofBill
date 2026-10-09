@@ -75,7 +75,7 @@ Free instances sleep after about 15 minutes idle and take up to a minute to wake
 6. **Bring your own:** *New contract* → upload any SOW; on the contract page paste any public repo — merged PRs become evidence.
 7. **Open portal** shows the client side: criteria ✓ with evidence, accept / request changes.
 
-`week0-paypal-check.sh` validates the raw Invoicing v2 loop (token → create → idempotent replay → mocked duplicate → send → partial pay → remind → paid) against your sandbox app.
+`scripts/paypal-sandbox-check.sh` validates the raw Invoicing v2 loop (token → create → idempotent replay → mocked duplicate → send → partial pay → remind → paid) against your sandbox app.
 
 ---
 

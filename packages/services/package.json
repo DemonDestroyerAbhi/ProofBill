@@ -17,8 +17,7 @@
     "@proofbill/paypal": "workspace:*",
     "mammoth": "^1.11.0",
     "tsx": "^4.20.0",
-    "unpdf": "^1.3.0",
-    "zod": "^4.1.0"
+    "unpdf": "^1.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
