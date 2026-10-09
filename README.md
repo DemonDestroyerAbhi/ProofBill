@@ -43,6 +43,21 @@ Click **Try the demo workspace**. Without credentials, ProofBill runs in offline
 | GitHub webhooks | `GITHUB_WEBHOOK_SECRET` (payload URL `https://<host>/api/webhooks/github`, event *Pull requests*) |
 | Higher GitHub rate limit | `GITHUB_TOKEN` (read-only) |
 
+### Deploy for free (no credit card)
+
+`render.yaml` is the full setup: web service, worker, cron job and Postgres on paid Starter plans. Render asks for a card for Blueprints. Without a card:
+
+1. **Database:** create a free Postgres on [Neon](https://neon.tech) and copy its connection string (`…?sslmode=require`).
+2. **Web service:** on Render, choose **New → Web Service** (not Blueprint), pick this repo and the **Free** instance type, and set:
+   - Build command: `corepack enable && pnpm install --frozen-lockfile && pnpm --filter web build`
+   - Start command: `pnpm start:web` (runs database migrations, then starts the app)
+   - Health check path: `/api/health`
+   - Environment: everything in `.env.example`, with `DATABASE_URL` = the Neon URL, `SESSION_SECRET` and `CRON_SECRET` = random strings (`openssl rand -hex 32`), and `APP_URL` = the Render URL once it exists.
+3. **Background jobs:** the free plan has no worker or cron, so GitHub Actions calls the app instead ([`.github/workflows/cron.yml`](.github/workflows/cron.yml)). Every 10 minutes it runs `tick` (repo polling, AI evidence mapping, auto-accept); every 6 hours it runs `collections` (reminders, late fees, reconciliation). Add repository secrets `APP_URL` and `CRON_SECRET` under Settings → Secrets and variables → Actions.
+4. **PayPal webhook:** point it at `https://<render-url>/api/webhooks/paypal` and set `PAYPAL_WEBHOOK_ID`.
+
+Free instances sleep after about 15 minutes idle and take up to a minute to wake. PayPal retries webhooks, so nothing is lost, and the 10-minute job also keeps the instance warm.
+
 ### PayPal sandbox tips
 
 - Use a sandbox **Business** account (the freelancer) and a **Personal** account (the client), both in the **same country**, ideally US.

@@ -9,7 +9,7 @@ if (!url) throw new Error("DATABASE_URL is not set");
 const here = dirname(fileURLToPath(import.meta.url));
 const client = postgres(url, {
   max: 1,
-  ssl: process.env.DATABASE_SSL === "true" || /render\.com/.test(url) ? "require" : undefined,
+  ssl: process.env.DATABASE_SSL === "true" || /render\.com|neon\.tech|sslmode=require/.test(url) ? "require" : undefined,
   onnotice: () => {},
 });
 await migrate(drizzle(client), { migrationsFolder: join(here, "..", "migrations") });

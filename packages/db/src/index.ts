@@ -11,9 +11,15 @@ export type Db = PostgresJsDatabase<typeof schema>;
 const g = globalThis as unknown as { __pbDb?: { db: Db; sql: postgres.Sql } };
 
 function connectionOptions(url: string): postgres.Options<{}> {
-  // Render's external connection strings need TLS; internal ones don't. Allow override.
-  const ssl = process.env.DATABASE_SSL === "true" || /render\.com/.test(url) ? "require" : undefined;
-  return { max: Number(process.env.DATABASE_POOL ?? 10), ssl, onnotice: () => {} };
+  // Hosted Postgres (Render external, Neon, …) needs TLS; local doesn't. Allow override.
+  const ssl = needsSsl(url) ? "require" : undefined;
+  // Transaction-mode poolers (Neon "-pooler" hosts, PgBouncer) don't support prepared statements.
+  const prepare = !/-pooler\.|pgbouncer=true/.test(url);
+  return { max: Number(process.env.DATABASE_POOL ?? 10), ssl, prepare, onnotice: () => {} };
+}
+
+export function needsSsl(url: string): boolean {
+  return process.env.DATABASE_SSL === "true" || /render\.com|neon\.tech|sslmode=require/.test(url);
 }
 
 /** Process-wide singleton (survives Next.js dev hot reloads). */

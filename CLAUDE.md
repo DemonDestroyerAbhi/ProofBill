@@ -249,6 +249,7 @@ Next:
 - Reconciliation: `packages/paypal/src/transactions.ts` uses `@paypal/paypal-server-sdk@2.5.0` (pinned) `TransactionSearchController` → `invoice_payments` + `invoices.fee_cents/net_cents/reconcile_status`. Runs after a payment webhook (best-effort), in the collections cron, and from the invoice page. Needs **Transaction search** permission on the PayPal app. Mock mode simulates fees at 3.49% + $0.49.
 - PayPal webhooks: dedupe skips only *processed* events — PayPal retries non-2xx up to 25× over 3 days, so an unverified/errored delivery is reprocessed on retry. Unverified → 401 (PayPal retries).
 - Sandbox (kickoff session): app feature toggles (Transaction search etc.) take up to ~10 min to apply; webhook is per app per environment (recreate for live); local webhook testing needs a tunnel (ngrok / cloudflared) to :3000; debug via Developer Dashboard → Event logs (API calls, errors, webhook deliveries + resend) and Sandbox notifications.
+- Free hosting (no card; Render Blueprints need one): Render **Web Service** (Free) + **Neon** Postgres + **GitHub Actions** (`.github/workflows/cron.yml`) calling `POST /api/cron/{tick,collections}` with `Authorization: Bearer $CRON_SECRET`. Start command `pnpm start:web` runs migrations first. `render.yaml` stays as the paid option.
 
 ## 15. Planned (after sandbox run): PayPal MCP in "Ask the ledger"
 

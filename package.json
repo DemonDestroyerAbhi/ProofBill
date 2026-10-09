@@ -10,6 +10,7 @@
     "test": "pnpm -r --if-present test",
     "db:migrate": "pnpm --filter @proofbill/db migrate",
     "db:generate": "pnpm --filter @proofbill/db generate",
-    "db:seed": "pnpm --filter @proofbill/services seed"
+    "db:seed": "pnpm --filter @proofbill/services seed",
+    "start:web": "pnpm --filter @proofbill/db migrate && pnpm --filter web start"
   }
 }
