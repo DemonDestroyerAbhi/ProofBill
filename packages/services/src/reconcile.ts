@@ -100,7 +100,7 @@ export async function tryReconcile(invoiceId: string): Promise<ReconcileResult |
         action: "reconcile_failed",
         actor: "system",
         summary: `Transaction Search lookup failed for ${inv.number}: ${(e as Error).message}`,
-        rationale: e instanceof TransactionSearchError && e.status === 403 ? "Enable 'Transaction search' on the PayPal REST app." : null,
+        rationale: e instanceof TransactionSearchError && e.status === 403 ? "Enable 'Transaction search' on the PayPal REST app (changes can take ~10 minutes to apply)." : null,
       });
     return null;
   }

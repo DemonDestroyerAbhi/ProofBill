@@ -43,6 +43,13 @@ Click **Try the demo workspace**. Without credentials, ProofBill runs in offline
 | GitHub webhooks | `GITHUB_WEBHOOK_SECRET` (payload URL `https://<host>/api/webhooks/github`, event *Pull requests*) |
 | Higher GitHub rate limit | `GITHUB_TOKEN` (read-only) |
 
+### PayPal sandbox tips
+
+- Use a sandbox **Business** account (the freelancer) and a **Personal** account (the client), both in the **same country**, ideally US.
+- Feature toggles on the REST app (Invoicing, Transaction search) can take **about 10 minutes** to apply. Remember to click *Save*.
+- A webhook belongs to one app in one environment. For local testing, expose port 3000 with a tunnel (e.g. `ngrok http 3000` or `cloudflared tunnel --url http://localhost:3000`) and register `https://<tunnel>/api/webhooks/paypal`. Recreate the webhook for live.
+- When something misbehaves, check Developer Dashboard → **Event logs** (API calls, errors, webhook deliveries with *Resend*) and **Sandbox notifications** (the emails PayPal would have sent).
+
 ### Judge walkthrough (sandbox)
 
 1. **Try the demo workspace** → *Invoice Export Platform* (Larkspur Labs, from [`sample-sow.md`](sample-sow.md)).

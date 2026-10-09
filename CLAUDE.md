@@ -10,7 +10,7 @@
 
 **PayPal AI Hackathon** — "Build what's next with PayPal and AI" (Devpost, paypalaihackathon.devpost.com)
 
-- **Deadline:** Nov 13, 2026 @ 01:30 IST (= Nov 12, 12:00 PT). Internal deadline: **Nov 11**.
+- **Deadline:** Nov 12, 2026 @ **2:00 PM PT** (per PayPal kickoff session) = Nov 13 @ 03:30 IST (PST, UTC−8). Internal deadline: **Nov 11**.
 - **Must:** meaningfully use ≥1 PayPal technology (sandbox) **and** AI; working prototype; documented.
 - **Submit:** text description · functional demo (hosted URL **or** complete run instructions) · tools used + how · **public repo with LICENSE visible in About** · **YouTube demo video < 3 min**, public, no third-party copyrighted music/marks.
 - New or existing projects OK if meaningful progress during the hackathon. Mockups/static prototypes don't qualify.
@@ -247,3 +247,5 @@ Next:
 - Tests: `packages/services/test/flow.test.ts` drives the whole flow against a real Postgres (`TEST_DATABASE_URL`, schema dropped each run).
 - APIMatic Context Plugin (PayPal Server SDK, TS skills) vendored in `.claude/skills/` — loads in every session. Covers Orders/Payments/Vault/Subscriptions/Transaction Search via `@paypal/paypal-server-sdk`; **not Invoicing**. Load `typescript-getting-started` first when touching the Server SDK.
 - Reconciliation: `packages/paypal/src/transactions.ts` uses `@paypal/paypal-server-sdk@2.5.0` (pinned) `TransactionSearchController` → `invoice_payments` + `invoices.fee_cents/net_cents/reconcile_status`. Runs after a payment webhook (best-effort), in the collections cron, and from the invoice page. Needs **Transaction search** permission on the PayPal app. Mock mode simulates fees at 3.49% + $0.49.
+- PayPal webhooks: dedupe skips only *processed* events — PayPal retries non-2xx up to 25× over 3 days, so an unverified/errored delivery is reprocessed on retry. Unverified → 401 (PayPal retries).
+- Sandbox (kickoff session): app feature toggles (Transaction search etc.) take up to ~10 min to apply; webhook is per app per environment (recreate for live); local webhook testing needs a tunnel (ngrok / cloudflared) to :3000; debug via Developer Dashboard → Event logs (API calls, errors, webhook deliveries + resend) and Sandbox notifications.

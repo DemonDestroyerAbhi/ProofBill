@@ -167,6 +167,9 @@ describe("invoice → PayPal → paid", () => {
     expect(await handlePayPalWebhook({ ...ev, id: "WH-TEST-2" }, false)).toBe("unverified");
     const [row] = await getDb().select().from(webhookEvents).where(eq(webhookEvents.id, "paypal:WH-TEST-2"));
     expect(row?.verified).toBe(false);
+    // PayPal retries the unverified delivery; once it verifies it must be processed, not dropped as a duplicate.
+    expect(await handlePayPalWebhook({ ...ev, id: "WH-TEST-2" }, true)).toBe("processed");
+    expect(await handlePayPalWebhook({ ...ev, id: "WH-TEST-2" }, true)).toBe("duplicate");
   });
 });
 

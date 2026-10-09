@@ -378,12 +378,19 @@ export interface PayPalWebhookEvent {
 /** Verified, deduped webhook processing. Returns what happened for logging. */
 export async function handlePayPalWebhook(event: PayPalWebhookEvent, verified: boolean): Promise<"duplicate" | "unverified" | "ignored" | "processed"> {
   const db = getDb();
-  const [stored] = await db
-    .insert(webhookEvents)
-    .values({ id: `paypal:${event.id}`, provider: "paypal", eventType: event.event_type, verified, payload: event })
-    .onConflictDoNothing()
-    .returning();
-  if (!stored) return "duplicate";
+  // Dedupe on *processed* events only. PayPal retries non-2xx deliveries (up to 25 times over 3 days),
+  // so a delivery that failed verification or errored mid-processing must be processed on retry.
+  const id = `paypal:${event.id}`;
+  const [prior] = await db.select().from(webhookEvents).where(eq(webhookEvents.id, id));
+  if (prior?.processedAt) return "duplicate";
+  const [stored] = prior
+    ? await db.update(webhookEvents).set({ verified: prior.verified || verified, payload: event, error: null }).where(eq(webhookEvents.id, id)).returning()
+    : await db
+        .insert(webhookEvents)
+        .values({ id, provider: "paypal", eventType: event.event_type, verified, payload: event })
+        .onConflictDoNothing()
+        .returning();
+  if (!stored) return "duplicate"; // a concurrent delivery of the same event won the insert
   if (!verified) return "unverified";
   if (!event.event_type.startsWith("INVOICING.INVOICE.")) {
     await db.update(webhookEvents).set({ processedAt: new Date() }).where(eq(webhookEvents.id, stored.id));
