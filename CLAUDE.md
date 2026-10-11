@@ -146,3 +146,17 @@ Goal: Gemini reasons; PayPal's own MCP server supplies live PayPal data. Read-on
 - **Tests:** in-memory MCP server (SDK `InMemoryTransport`) to test allowlist filtering + dispatch + fallback.
 - **Risks:** SSE transport is legacy in the MCP spec (SDK still supports it); tool names/schemas may change; sandbox MCP `create_invoice` bug irrelevant (read-only).
 - Est. ~half a day.
+
+## 10. Status & next steps (handoff, Oct 2026)
+
+**Built + pushed** (branch `claude/wonderful-fermi-83bhly`): full flow (extract → evidence → portal accept/reject/auto-accept → invoice → webhooks/reminders/late fees), Transaction Search reconciliation, accounts (freelancer/client, email+password + GitHub OAuth), many-to-many client↔freelancer via portal links, opt-in per-visitor demo, skeleton loading, ledger assistant (Gemini function calling). `pnpm typecheck && pnpm test` green (services tests need Postgres: `TEST_DATABASE_URL`).
+
+**Deployment:** user copies this branch into their own hackathon repo → Render Blueprint (`render.yaml`) at `https://proofbill-web.onrender.com`. Secrets live only in Render (never commit them, never ask the user to paste them in chat).
+- Set: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYER_EMAIL`, `GEMINI_API_KEY`.
+- To set (group `proofbill-shared`): `APP_URL=https://proofbill-web.onrender.com` (worker/cron need it for portal links); `PAYPAL_WEBHOOK_ID` (PayPal app → Webhooks → `…/api/webhooks/paypal`, events INVOICING.INVOICE.PAID/UPDATED/CANCELLED/REFUNDED; without it webhooks 401 and status only syncs via cron/"Refresh from PayPal"); optional `GITHUB_TOKEN` (app-wide fine-grained read-only public-repo token, only for rate limit 60→5000/h; not per user, not login).
+- Web-only, optional: `GITHUB_OAUTH_CLIENT_ID/SECRET` (GitHub OAuth App, callback `https://proofbill-web.onrender.com/api/auth/github/callback`, scopes `read:user user:email`).
+- PayPal app toggles: Invoicing, Transaction search, Negative Testing on the sandbox business account.
+
+**Not yet verified for real:** `/api/health` on Render (expect `paypal: sandbox`, `ai: gemini`); full sandbox loop (`scripts/paypal-sandbox-check.sh`, then in-app send → pay as `PAYER_EMAIL` → webhook → reconcile); `pnpm --filter @proofbill/ai eval` with a live Gemini key; GitHub OAuth + public-repo polling on Render.
+
+**Next:** fix whatever the real sandbox/Gemini run surfaces → PayPal MCP in "Ask the ledger" (§9) → submission (README live URL, public repo + LICENSE, demo video, Devpost write-up). Optional: password reset, Bryntum Gantt, Kernel URL checks.
